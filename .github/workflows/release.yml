@@ -1,0 +1,126 @@
+name: Release
+
+# Tự động build và phát hành khi app_version trong config.toml đổi.
+on:
+  push:
+    branches: [main]
+    paths: [config.toml]
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Build và phát hành lại phiên bản hiện tại (dù version không đổi)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Kiểm tra phiên bản
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      should_release: ${{ steps.v.outputs.should_release }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: So sánh app_version với commit trước
+        id: v
+        shell: bash
+        run: |
+          get() { grep -E '^app_version\s*=' | head -1 | sed -E 's/^[^"]*"([^"]+)".*/\1/'; }
+          NEW=$(get < config.toml)
+          if ! [[ "$NEW" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::app_version không hợp lệ: '$NEW'"; exit 1
+          fi
+          OLD=$(git show HEAD~1:config.toml 2>/dev/null | get || true)
+          echo "Phiên bản cũ: '${OLD}' | mới: '${NEW}'"
+          echo "version=$NEW" >> "$GITHUB_OUTPUT"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.force }}" = "true" ]; then
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+          elif [ "$NEW" != "$OLD" ]; then
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+            echo "Version không đổi, bỏ qua build."
+          fi
+
+  build:
+    name: Build (${{ matrix.name }})
+    needs: check
+    if: needs.check.outputs.should_release == 'true'
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - name: Windows
+            os: windows-latest
+            args: --win
+            artifact: win
+          - name: Linux
+            os: ubuntu-latest
+            args: --linux
+            artifact: linux
+    runs-on: ${{ matrix.os }}
+    env:
+      NODE_OPTIONS: --max-old-space-size=6144
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run prepare-build
+      - run: npm run build
+      - name: Đóng gói
+        run: npx electron-builder --config electron-builder.config.cjs ${{ matrix.args }} --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.artifact }}
+          if-no-files-found: error
+          path: |
+            dist/*.exe
+            dist/*.exe.blockmap
+            dist/*.AppImage
+            dist/latest*.yml
+
+  release:
+    name: Đăng lên Release
+    needs: [check, build]
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSION: ${{ needs.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: assets
+          pattern: dist-*
+          merge-multiple: true
+      - name: Liệt kê tệp
+        run: ls -la assets
+      - name: Tạo nội dung mô tả
+        run: |
+          sed "s/{{VERSION}}/${VERSION}/g; s#{{REPO}}#${GITHUB_REPOSITORY}#g" .github/release-notes.md > notes.md
+      - name: Xóa release cũ cùng tag (nếu có)
+        run: |
+          if gh release view "v${VERSION}" >/dev/null 2>&1; then
+            echo "Đã có release v${VERSION}, xóa để tạo lại."
+            gh release delete "v${VERSION}" --cleanup-tag --yes
+          fi
+      - name: Tạo release mới
+        run: |
+          gh release create "v${VERSION}" assets/* \
+            --target "${GITHUB_SHA}" \
+            --title "v${VERSION}" \
+            --notes-file notes.md \
+            --latest
