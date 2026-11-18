@@ -1,0 +1,81 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root,
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0f1318;
+  --panel: #171c23;
+  --panel-2: #1f262f;
+  --border: #2b333e;
+  --text: #e7eaef;
+  --muted: #8d98a8;
+  --accent: #4fc17b;
+  --accent-fg: #06150c;
+  --danger: #ef6b6b;
+  --danger-fg: #1a0707;
+  --success: #4fc17b;
+  --warning: #e5b64a;
+  --info: #60a5fa;
+  --purple: #b48cf2;
+  --pink: #f08fc0;
+  --overlay: rgb(0 0 0 / 0.62);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #f2f4f7;
+  --panel: #ffffff;
+  --panel-2: #eef1f5;
+  --border: #d6dce4;
+  --text: #19202a;
+  --muted: #627084;
+  --accent: #1f9d55;
+  --accent-fg: #ffffff;
+  --danger: #d64545;
+  --danger-fg: #ffffff;
+  --success: #1f9d55;
+  --warning: #b97a05;
+  --info: #2563eb;
+  --purple: #7c3aed;
+  --pink: #c026d3;
+  --overlay: rgb(15 20 30 / 0.45);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Dashboard / server list grid: up to 4 boxes per row on wide screens. */
+.mcm-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(max(320px, calc((100% - 48px) / 4)), 1fr));
+}
