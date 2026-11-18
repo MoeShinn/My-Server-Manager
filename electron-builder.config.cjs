@@ -18,7 +18,9 @@ const str = (key, def) => (typeof toml[key] === 'string' && toml[key].trim() !==
 const appId = str('app_id', 'com.example.mcservermanager') // NEVER change after first release
 const productName = str('app_name', 'My Server Manager')
 const appVersion = str('app_version', '1.0.0')
-const appRepo = str('app_repo', 'OWNER/REPO')
+// Nếu app_repo còn là OWNER/REPO thì dùng repo đang chạy CI (GITHUB_REPOSITORY) để vẫn sinh latest.yml.
+const rawRepo = str('app_repo', 'OWNER/REPO')
+const appRepo = rawRepo === 'OWNER/REPO' && process.env.GITHUB_REPOSITORY ? process.env.GITHUB_REPOSITORY : rawRepo
 const appIcon = str('app_icon', 'assets/icon.png')
 const installerIcon = str('installer_icon', '')
 
