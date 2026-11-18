@@ -1,0 +1,94 @@
+name: Apply update.zip
+
+# Cách dùng: đưa file update.zip vào thư mục gốc repo (cùng chỗ với config.toml) rồi commit lên main.
+# Workflow sẽ giải nén, chép đè/thêm file vào repo, xóa update.zip, commit,
+# rồi tự chạy workflow Release (Release vẫn chỉ build khi app_version trong config.toml đổi).
+on:
+  push:
+    branches: [main]
+    paths: [update.zip]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: apply-update
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    name: Giải nén và áp dụng update.zip
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Kiểm tra update.zip
+        id: has
+        run: |
+          if [ -f update.zip ]; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Không có update.zip (có thể vừa bị xóa sau khi áp dụng), bỏ qua."
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Giải nén và chép vào repo
+        if: steps.has.outputs.found == 'true'
+        run: |
+          set -e
+          rm -rf /tmp/upd && mkdir /tmp/upd
+          unzip -q update.zip -d /tmp/upd
+          rm -rf /tmp/upd/__MACOSX
+
+          # Nếu zip chỉ có 1 thư mục gốc (kiểu GitHub: My-Server-Manager-main/) mà repo không có thư mục trùng tên
+          # thì bỏ lớp thư mục đó. Zip có sẵn src/, .github/... thì giữ nguyên.
+          SRC=/tmp/upd
+          mapfile -t top < <(find /tmp/upd -mindepth 1 -maxdepth 1)
+          if [ "${#top[@]}" -eq 1 ] && [ -d "${top[0]}" ] && [ ! -e "./$(basename "${top[0]}")" ]; then
+            SRC="${top[0]}"
+            echo "Bỏ lớp thư mục gốc: $(basename "$SRC")"
+          fi
+
+          # .github/workflows: GITHUB_TOKEN không được phép tạo hay sửa file workflow
+          # (kể cả file mới), nên mặc định bỏ qua im lặng, không báo lỗi. Các file khác trong .github vẫn áp dụng.
+          if [ -d "$SRC/.github/workflows" ]; then
+            echo "::notice::Bỏ qua .github/workflows trong update.zip (GitHub không cho workflow tự sửa workflow). Hãy tự chép các file này."
+          fi
+
+          rsync -a \
+            --exclude='/.git/' \
+            --exclude='/.github/workflows/' \
+            --exclude='/update.zip' \
+            "$SRC"/ ./
+
+          rm -f update.zip
+          echo "Đã áp dụng. Thay đổi:"
+          git status --short | head -100
+
+      - name: Commit và đẩy lên main
+        id: commit
+        if: steps.has.outputs.found == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Không có gì thay đổi."
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+          else
+            git commit -m "chore: apply update.zip"
+            git push
+            echo "pushed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Push bằng GITHUB_TOKEN không tự kích hoạt workflow khác, nên gọi Release bằng tay.
+      # Release so config.toml với commit trước: version đổi thì build, không đổi thì bỏ qua.
+      - name: Kích hoạt Release
+        if: steps.commit.outputs.pushed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run release.yml --ref "${GITHUB_REF_NAME}"

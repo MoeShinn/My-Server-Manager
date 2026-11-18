@@ -76,12 +76,32 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - name: Điền repo thật vào config.toml (nếu còn OWNER/REPO)
+        shell: bash
+        run: |
+          # Nếu app_repo/data_repo còn là OWNER/REPO thì tự dùng repo đang chạy workflow.
+          # Không có repo thật thì electron-builder KHÔNG tạo latest.yml, app không tự cập nhật được.
+          sed -i -E "s#^(app_repo[[:space:]]*=[[:space:]]*)\"OWNER/REPO\"#\1\"${GITHUB_REPOSITORY}\"#" config.toml
+          sed -i -E "s#^(data_repo[[:space:]]*=[[:space:]]*)\"OWNER/REPO\"#\1\"${GITHUB_REPOSITORY}\"#" config.toml
+          grep -E '^(app_repo|data_repo)' config.toml
       - run: npm ci
       - run: npm run typecheck
       - run: npm run prepare-build
       - run: npm run build
       - name: Đóng gói
         run: npx electron-builder --config electron-builder.config.cjs ${{ matrix.args }} --publish never
+      - name: Kiểm tra có đủ file cập nhật (latest*.yml, blockmap)
+        shell: bash
+        run: |
+          ls -la dist
+          if [ "${{ matrix.artifact }}" = "win" ]; then
+            need="dist/latest.yml dist/*.exe dist/*.exe.blockmap"
+          else
+            need="dist/latest-linux.yml dist/*.AppImage"
+          fi
+          for f in $need; do
+            [ -e "$f" ] || { echo "::error::Thiếu file $f (app sẽ không tự cập nhật được)"; exit 1; }
+          done
       - uses: actions/upload-artifact@v4
         with:
           name: dist-${{ matrix.artifact }}
@@ -90,6 +110,7 @@ jobs:
             dist/*.exe
             dist/*.exe.blockmap
             dist/*.AppImage
+            dist/*.AppImage.blockmap
             dist/latest*.yml
 
   release:
@@ -103,11 +124,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          path: assets
+          path: release-files
           pattern: dist-*
           merge-multiple: true
       - name: Liệt kê tệp
-        run: ls -la assets
+        run: ls -la release-files
       - name: Tạo nội dung mô tả
         run: |
           sed "s/{{VERSION}}/${VERSION}/g; s#{{REPO}}#${GITHUB_REPOSITORY}#g" .github/release-notes.md > notes.md
@@ -119,7 +140,7 @@ jobs:
           fi
       - name: Tạo release mới
         run: |
-          gh release create "v${VERSION}" assets/* \
+          gh release create "v${VERSION}" release-files/* \
             --target "${GITHUB_SHA}" \
             --title "v${VERSION}" \
             --notes-file notes.md \
