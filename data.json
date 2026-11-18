@@ -139,6 +139,16 @@
       "code": "vi-en",
       "name": "Tiếng Việt - English",
       "file": "language/vi-en.json"
+    },
+    {
+      "code": "zh-CN",
+      "name": "简体中文",
+      "file": "language/zh-CN.json"
+    },
+    {
+      "code": "es",
+      "name": "Español",
+      "file": "language/es.json"
     }
   ],
   "playit": {
