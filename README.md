@@ -36,7 +36,7 @@ Tải bản mới nhất ở trang [Releases](https://github.com/MoeShinn/My-Ser
 | Hệ điều hành | Tệp | Ghi chú |
 |---|---|---|
 | Windows 10/11 (64-bit) | `mc-server-manager-Setup-<phiên bản>.exe` | Chạy tệp và làm theo hướng dẫn. |
-| Linux (64-bit) | `mc-server-manager-<phiên bản>-linux-x64.AppImage` | Thử nghiệm. `chmod +x` rồi chạy tệp. |
+| Linux (64-bit) | `mc-server-manager-<phiên bản>-linux-x64.AppImage` | Thử nghiệm. `chmod +x` rồi chạy tệp. Ubuntu 22.04+ có thể cần cài `libfuse2`. |
 
 Bản Windows chưa kí số, nên SmartScreen có thể cảnh báo "Unknown publisher". Bấm **More info** rồi **Run anyway**.
 
@@ -48,23 +48,36 @@ Công nghệ: Electron, TypeScript, React, Tailwind, electron-vite. Cần Node 2
 
 ```bash
 npm install
-npm run dev          # chạy chế độ phát triển (Windows: run-dev.bat)
+npm run dev          # chạy chế độ phát triển
 npm run typecheck    # kiểm tra kiểu
 npm run build        # build mã nguồn vào thư mục out/
 ```
 
-Tạo bản cài trên máy của bạn:
+Tạo bản cài trên máy của bạn (kết quả nằm trong thư mục `dist/`). Repo không có tệp `.bat` hay `.sh`, mọi thứ chạy bằng lệnh npm:
 
 ```bash
-# Windows
-build-setup.bat
-
-# Linux
+npm install
 npm run prepare-build && npm run build
+
+# Windows (tạo tệp .exe)
+npx electron-builder --config electron-builder.config.cjs --win --publish never
+
+# Linux (tạo tệp .AppImage)
 npx electron-builder --config electron-builder.config.cjs --linux --publish never
 ```
 
-Nếu `npm run build` báo "heap out of memory", đặt `NODE_OPTIONS=--max-old-space-size=6144` trước khi chạy (các tệp `.bat` đã làm sẵn).
+Mỗi hệ điều hành nên build trên chính hệ điều hành đó. Nếu không muốn build tay, dùng GitHub Actions (xem mục "Phát hành phiên bản mới").
+
+Nếu `npm run build` báo "heap out of memory", đặt biến môi trường `NODE_OPTIONS=--max-old-space-size=6144` trước khi chạy:
+
+```bash
+# Windows PowerShell
+$env:NODE_OPTIONS="--max-old-space-size=6144"
+# Windows cmd
+set NODE_OPTIONS=--max-old-space-size=6144
+# Linux / macOS
+export NODE_OPTIONS=--max-old-space-size=6144
+```
 
 ### Cấu trúc thư mục
 
@@ -81,7 +94,7 @@ src/main/          Tiến trình chính Electron: engine, content, files, langua
 src/preload/       Cầu nối an toàn giữa main và renderer
 src/renderer/      Giao diện React
 src/shared/        Kiểu dữ liệu và hợp đồng IPC dùng chung
-.github/           Workflow build/phát hành, mẫu issue và pull request
+.github/           Workflow (release.yml, apply-update.yml, ci.yml), release-notes.md, mẫu issue và pull request
 ```
 
 ### Cấu hình (`config.toml`)
@@ -89,7 +102,7 @@ src/shared/        Kiểu dữ liệu và hợp đồng IPC dùng chung
 Mỗi key có chú thích ngay phía trên. Các key chính:
 
 - `app_name`, `app_id` (không đổi sau khi phát hành), `user_agent` (nên ghi kèm tên GitHub vì PaperMC và Modrinth yêu cầu).
-- `app_repo`: kho chứa bản phát hành, dùng cho tính năng cập nhật.
+- `app_repo`: kho chứa bản phát hành, dùng cho tính năng cập nhật. Nếu còn `OWNER/REPO`, workflow Release tự điền kho đang chạy lúc build; khi build tay thì bạn phải điền, nếu không app sẽ không tự cập nhật được.
 - `data_repo`, `data_branch`: nơi app đọc `data.json` và ngôn ngữ tải thêm.
 - `app_version`: **nơi duy nhất** đổi phiên bản, lúc build tự đồng bộ vào `package.json`.
 - `installer_icon`: icon `.ico` cho trình cài đặt.
@@ -98,8 +111,10 @@ Mỗi key có chú thích ngay phía trên. Các key chính:
 
 1. Sửa `app_version` trong `config.toml` (ví dụ `1.0.1`) rồi đẩy lên nhánh `main`.
 2. Workflow **Release** tự chạy: so với commit trước, nếu version đổi thì build bản Windows (NSIS) và Linux (AppImage) trên GitHub Actions.
-3. Workflow tạo release `v<phiên bản>` kèm tệp cài đặt và các tệp `latest.yml`, `latest-linux.yml`, `.blockmap` (cơ chế tự cập nhật của app đọc các tệp này). Nếu release cùng tag đã tồn tại, nó bị **xóa và tạo lại**.
+3. Workflow tạo release `v<phiên bản>` kèm tệp cài đặt (`.exe`, `.AppImage`) và các tệp `latest.yml`, `latest-linux.yml`, `.blockmap` (cơ chế tự cập nhật của app đọc các tệp này). Thiếu một trong các tệp đó thì build báo lỗi, không đăng release. Nếu release cùng tag đã tồn tại, nó bị **xóa và tạo lại**.
 4. Muốn build lại đúng phiên bản hiện tại: vào tab **Actions**, chọn **Release**, bấm **Run workflow** và tích `force`.
+
+**Cập nhật mã nguồn bằng `update.zip`:** đưa tệp `update.zip` vào thư mục gốc repo rồi commit lên `main`. Workflow **Apply update.zip** tự giải nén, chép đè hoặc thêm tệp, xóa `update.zip`, commit rồi kích hoạt **Release** (vẫn chỉ build khi `app_version` đổi). Zip có thể có hoặc không có thư mục bọc ngoài. Riêng `.github/workflows/` bị bỏ qua vì GitHub không cho workflow tự sửa workflow, phần này phải tự chép tay.
 
 Nội dung mô tả release lấy từ [`.github/release-notes.md`](.github/release-notes.md) (`{{VERSION}}` và `{{REPO}}` được thay tự động).
 
