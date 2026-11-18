@@ -76,4 +76,4 @@ Server chỉ chạy được sau khi bạn chấp nhận Minecraft EULA. Ứng d
 Mọi thứ nằm trên máy của bạn. Gỡ cài đặt ứng dụng không xóa server của bạn, trừ khi bạn tích chọn xóa toàn bộ dữ liệu.
 
 ### Liên hệ
-LIÊN HỆ: MoeShinn, vtubershinju@gmail.com hoặc [t.me/moeshinn](https://t.me/moeshinn)
+LIÊN HỆ: MoeShinn, vtubershinju@gmail.com hoặc [t.me/MoeShinnCh](https://t.me/moeshinnch)
