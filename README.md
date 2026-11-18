@@ -94,7 +94,7 @@ Mỗi key có chú thích ngay phía trên. Các key chính:
 - `app_version`: **nơi duy nhất** đổi phiên bản, lúc build tự đồng bộ vào `package.json`.
 - `installer_icon`: icon `.ico` cho trình cài đặt.
 
-### Phát hành phiên bản mới
+### Phát hành phiên bản mới (Dành cho thành viên phát triển phần mềm)
 
 1. Sửa `app_version` trong `config.toml` (ví dụ `1.0.1`) rồi đẩy lên nhánh `main`.
 2. Workflow **Release** tự chạy: so với commit trước, nếu version đổi thì build bản Windows (NSIS) và Linux (AppImage) trên GitHub Actions.
