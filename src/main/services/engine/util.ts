@@ -3,6 +3,7 @@ import { promises as fs } from 'fs';
 import * as path from 'path';
 import { randomBytes } from 'crypto';
 import { AppException } from '../../../shared/types';
+import { stripMcColors } from '../../../shared/mcText';
 
 export const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -26,7 +27,7 @@ export function isValidId(id: unknown): id is string {
 }
 
 export function slugify(name: string): string {
-  const base = name
+  const base = stripMcColors(name)
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[đĐ]/g, 'd')

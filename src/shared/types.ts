@@ -9,9 +9,12 @@ export class AppException extends Error {
 export interface JvmFlag { id: string; value: string; enabled: boolean; }
 export interface StartOptions { jarFile: string; flags: JvmFlag[]; }
 export interface ServerSettings { ramMb: number; storageLimitMb: number | null; autoStart: boolean; autoRestartOnCrash: boolean; port: number; javaMajorOverride: number | null; customIpHost: string | null; }
-export interface ServerConfig { id: string; name: string; software: ServerSoftware; modKind: ModKind; mcVersion: string | null; build: string | null; customJarName: string | null; folder: string; createdAt: number; settings: ServerSettings; start: StartOptions; }
-export interface ServerSummary { id: string; name: string; software: ServerSoftware; modKind: ModKind; mcVersion: string | null; build: string | null; customJarName: string | null; status: ServerStatus; playersOnline: number; playersMax: number; port: number; }
-export interface CreateServerInput { name: string; software: ServerSoftware; modKind: ModKind; mcVersion: string | null; build: string | null; customJarPath: string | null; eulaAccepted: boolean; settings: Partial<ServerSettings> & { ramMb: number }; }
+export interface ServerConfig { id: string; name: string; description: string; software: ServerSoftware; modKind: ModKind; mcVersion: string | null; build: string | null; customJarName: string | null; folder: string; createdAt: number; settings: ServerSettings; start: StartOptions; }
+export interface ServerSummary { id: string; name: string; description: string; software: ServerSoftware; modKind: ModKind; mcVersion: string | null; build: string | null; customJarName: string | null; status: ServerStatus; playersOnline: number; playersMax: number; port: number; }
+export interface CreateServerInput { name: string; description?: string; software: ServerSoftware; modKind: ModKind; mcVersion: string | null; build: string | null; customJarPath: string | null; eulaAccepted: boolean; settings: Partial<ServerSettings> & { ramMb: number }; }
+/** Import a single server .jar: the app makes a fresh server folder and copies the jar into it. */
+export interface ImportJarInput { jarPath: string; name: string; description: string | null; software: ServerSoftware; mcVersion: string | null; build: string | null; }
+export interface ServerInfoPatch { name: string; description: string; }
 export interface ConsoleLine { ts: number; level: 'info' | 'warn' | 'error' | 'command' | 'system'; text: string; textKey?: string; params?: Record<string, string | number>; }
 export interface ServerStats { cpuPercent: number; ramUsedMb: number; diskUsedMb: number; uptimeSec: number; }
 export interface PlayerEntry { name: string; uuid: string | null; online: boolean; }

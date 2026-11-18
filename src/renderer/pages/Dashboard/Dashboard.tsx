@@ -2,7 +2,7 @@ import { Plus, Play, Square } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '@/api'
-import { Box, Button, ConfirmDialog, StatusBadge, useToast } from '@/components/ui'
+import { Box, Button, ConfirmDialog, McText, StatusBadge, useToast } from '@/components/ui'
 import { useErrorText, useT } from '@/i18n'
 import { ServerToggleButton, useServerActions } from '@/layout/serverActions'
 import { ACTIVE_STATUSES, useServersStore } from '@/layout/stores'
@@ -77,7 +77,9 @@ export default function Dashboard(): JSX.Element {
           {active.map((server) => (
             <Box key={server.id} className="flex flex-col gap-3">
               <div className="flex items-start justify-between gap-2">
-                <h3 className="min-w-0 truncate text-base font-semibold text-fg">{server.name}</h3>
+                <h3 className="min-w-0 truncate text-base font-semibold text-fg">
+                  <McText text={server.name} />
+                </h3>
                 <StatusBadge status={server.status} />
               </div>
               <p className="text-sm text-muted">{t('dashboard.players', { online: server.playersOnline, max: server.playersMax })}</p>

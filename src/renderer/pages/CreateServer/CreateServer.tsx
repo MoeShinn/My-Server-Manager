@@ -1,10 +1,11 @@
 import { ChevronDown, ChevronRight, ExternalLink, FileUp, RefreshCw } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { cleanDescription, stripMcColors } from '@shared/mcText'
 import { DEFAULT_PORT, DEFAULT_RAM_MB, DEFAULT_STORAGE_LIMIT_MB, MOD_KIND_BY_SOFTWARE } from '@shared/constants'
 import type { CreateServerInput, DownloadProgress, ModKind, ServerSoftware, SystemInfo, VersionEntry } from '@shared/types'
 import { api, getErrorCode } from '@/api'
-import { Badge, Box, Button, Field, Modal, ProgressBar, Select, Spinner, TextInput, Toggle, useToast } from '@/components/ui'
+import { Badge, Box, Button, Field, McTextEditor, Modal, ProgressBar, Select, Spinner, TextInput, Toggle, useToast } from '@/components/ui'
 import type { SelectOption } from '@/components/ui'
 import { useErrorText, useT } from '@/i18n'
 import { SOFTWARE_ORDER } from '@/layout/software'
@@ -26,7 +27,7 @@ function defaultRamKey(totalMb: number): string {
 }
 
 type VersionsState = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; items: VersionEntry[] }
-type ErrorField = 'name' | 'version' | 'jar' | 'mc' | 'ram' | 'storage' | 'port' | 'eula'
+type ErrorField = 'name' | 'description' | 'version' | 'jar' | 'mc' | 'ram' | 'storage' | 'port' | 'eula'
 
 export default function CreateServer(): JSX.Element {
   const t = useT()
@@ -36,6 +37,7 @@ export default function CreateServer(): JSX.Element {
 
   // --- form state ---
   const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
   const [software, setSoftware] = useState<ServerSoftware>('paper')
   const [versions, setVersions] = useState<VersionsState>({ status: 'loading' })
   const [reloadToken, setReloadToken] = useState(0)
@@ -221,7 +223,8 @@ export default function CreateServer(): JSX.Element {
   // --- validation ---
   const errors = useMemo(() => {
     const e: Partial<Record<ErrorField, string>> = {}
-    if (name.trim() === '') e.name = t('create.error.name')
+    if (stripMcColors(name).trim() === '') e.name = t('create.error.name')
+    if (cleanDescription(description) === null) e.description = t('info.error.description')
     if (isCustom) {
       if (!customJar) e.jar = t('create.error.jar')
       if (!customMcValid) e.mc = t('create.error.mcVersion')
@@ -239,7 +242,7 @@ export default function CreateServer(): JSX.Element {
     else if (portFree === false) e.port = t('create.error.portInUse', { port: portNumber })
     if (software !== 'velocity' && !eula) e.eula = t('create.error.eula')
     return e
-  }, [name, isCustom, customJar, customMcValid, selectedEntry, ramKey, ramMb, totalRam, storageKey, storageMb, portValid, portFree, portNumber, software, eula, t])
+  }, [name, description, isCustom, customJar, customMcValid, selectedEntry, ramKey, ramMb, totalRam, storageKey, storageMb, portValid, portFree, portNumber, software, eula, t])
 
   const shown = (field: ErrorField): string | null => (showErrors ? errors[field] ?? null : null)
   const eulaOk = software === 'velocity' || eula
@@ -259,7 +262,7 @@ export default function CreateServer(): JSX.Element {
 
   async function submit(): Promise<void> {
     setShowErrors(true)
-    const order: ErrorField[] = ['name', 'version', 'jar', 'mc', 'ram', 'storage', 'port', 'eula']
+    const order: ErrorField[] = ['name', 'description', 'version', 'jar', 'mc', 'ram', 'storage', 'port', 'eula']
     const first = order.find((f) => errors[f])
     if (first) {
       if (first === 'port') setAdvancedOpen(true)
@@ -271,6 +274,7 @@ export default function CreateServer(): JSX.Element {
     const javaOverride = javaForced ? effectiveJava : javaMajor === null || javaMajor === defaultJava ? null : javaMajor
     const input: CreateServerInput = {
       name: name.trim(),
+      description: cleanDescription(description) ?? '',
       software,
       modKind: isCustom ? customKind : MOD_KIND_BY_SOFTWARE[software],
       mcVersion: isCustom ? (customMc.trim() || null) : selectedEntry?.mcVersion ?? null,
@@ -319,7 +323,11 @@ export default function CreateServer(): JSX.Element {
 
       <Box title={t('create.section.basics')} className="space-y-4">
         <Field id="field-name" label={t('create.name.label')} error={shown('name')}>
-          <TextInput value={name} onChange={setName} placeholder={t('create.name.placeholder')} invalid={!!shown('name')} maxLength={48} />
+          <McTextEditor value={name} onChange={setName} placeholder={t('create.name.placeholder')} invalid={!!shown('name')} maxLength={100} />
+        </Field>
+
+        <Field id="field-description" label={t('info.description.label')} error={shown('description')}>
+          <McTextEditor multiline value={description} onChange={setDescription} placeholder={t('info.description.placeholder')} invalid={!!shown('description')} maxLength={256} />
         </Field>
 
         <Field label={t('create.software.label')}>

@@ -1,4 +1,5 @@
 // FILE: src/main/services/engine/process.ts
+import { stripMcColors } from '../../../shared/mcText';
 import { spawn } from 'child_process';
 import type { ChildProcessWithoutNullStreams } from 'child_process';
 import { EventEmitter } from 'events';
@@ -251,7 +252,7 @@ export class ProcessManager {
     rt.storageWarned = false;
     rt.storageExceeded = false;
     this.setStatus(rt, 'starting');
-    this.addSystem(rt, 'engine.started', { name: cfg.name, ram: cfg.settings.ramMb, port: cfg.settings.port });
+    this.addSystem(rt, 'engine.started', { name: stripMcColors(cfg.name), ram: cfg.settings.ramMb, port: cfg.settings.port });
     this.emitPlayers(rt);
     if (rt.pid !== null) void writeRunFile(folder, { pid: rt.pid, startedAt: rt.startedAt, javaPath: javaExe }).catch(() => undefined);
 

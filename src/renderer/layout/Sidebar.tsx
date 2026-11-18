@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { NavLink, matchPath, useLocation, useNavigate } from 'react-router-dom'
 import type { ServerConfig } from '@shared/types'
 import { api } from '@/api'
-import { cn } from '@/components/ui'
+import { McText, cn } from '@/components/ui'
 import { useT } from '@/i18n'
 import { UpdateBanner } from './UpdateBanner'
 import { useServersStore, useSettingsStore } from './stores'
@@ -88,7 +88,7 @@ export function Sidebar(): JSX.Element {
             </button>
             <div className="mb-2 flex items-center gap-2 border-y border-line px-3 py-3">
               <span className={cn('h-2.5 w-2.5 shrink-0 rounded-full', DOT[status])} />
-              <span className="min-w-0 truncate text-sm font-semibold">{server?.name ?? ''}</span>
+              <span className="min-w-0 truncate text-sm font-semibold">{server ? <McText text={server.name} /> : ''}</span>
             </div>
             <NavItem to={`/server/${serverId}`} end icon={LayoutDashboard} label={t('nav.dashboard')} />
             {server && server.modKind !== 'none' && (

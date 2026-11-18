@@ -37,6 +37,7 @@ export function normalizeConfig(raw: unknown, id: string, folder: string): Serve
   return {
     id,
     name: typeof raw.name === 'string' && raw.name.trim() ? raw.name : id,
+    description: typeof raw.description === 'string' ? raw.description : '',
     software,
     modKind: isModKind(raw.modKind) ? raw.modKind : MOD_KIND_BY_SOFTWARE[software],
     mcVersion: strOrNull(raw.mcVersion),

@@ -2,7 +2,8 @@
 import { promises as fs } from 'fs';
 import * as path from 'path';
 import { AppException } from '../../../shared/types';
-import type { CreateServerInput, ServerConfig, ServerSoftware } from '../../../shared/types';
+import type { CreateServerInput, ImportJarInput, ServerConfig, ServerSoftware } from '../../../shared/types';
+import { cleanDescription, decodeMotd, encodeMotd } from '../../../shared/mcText';
 import type { ContentService, ServiceDeps } from '../../../shared/services';
 import { DEFAULT_PORT, DEFAULT_RAM_MB, DEFAULT_STORAGE_LIMIT_MB, MOD_KIND_BY_SOFTWARE, SERVER_META_DIR } from '../../../shared/constants';
 import { suggestFlags } from './flags';
@@ -29,6 +30,14 @@ function normOptional(v: unknown): string | null {
   return typeof v === 'string' && v.trim() !== '' ? v.trim() : null;
 }
 
+/** Validates a description coming from the UI. Empty string when not given. */
+export function validateDescription(v: unknown): string {
+  if (v === undefined || v === null) return '';
+  const d = cleanDescription(v);
+  if (d === null) throw new AppException('INVALID_INPUT', 'Invalid description');
+  return d;
+}
+
 export async function writeEula(folder: string): Promise<void> {
   const file = path.join(folder, 'eula.txt');
   const old = await readTextIfExists(file);
@@ -44,6 +53,7 @@ export async function createServer(ctx: EngineCtx, input: CreateServerInput): Pr
   const { store, deps } = ctx;
   const content = deps.content;
   const name = validateName(input.name);
+  const description = validateDescription(input.description);
   if (!isServerSoftware(input.software)) throw new AppException('INVALID_INPUT', 'Unknown software');
   const software = input.software;
   const velocity = software === 'velocity';
@@ -94,9 +104,12 @@ export async function createServer(ctx: EngineCtx, input: CreateServerInput): Pr
     }
     await content.ensureJava(major, taskId);
     if (input.eulaAccepted) await fs.writeFile(path.join(folder, 'eula.txt'), EULA_TEXT);
-    if (!velocity) await fs.writeFile(path.join(folder, 'server.properties'), `server-port=${port}\n`);
+    if (!velocity) {
+      const motdLine = description === '' ? '' : `motd=${encodeMotd(description)}\n`;
+      await fs.writeFile(path.join(folder, 'server.properties'), `server-port=${port}\n${motdLine}`);
+    }
     const cfg: ServerConfig = {
-      id, name, software,
+      id, name, description, software,
       modKind: isModKind(input.modKind) ? input.modKind : MOD_KIND_BY_SOFTWARE[software],
       mcVersion, build, customJarName, folder,
       createdAt: Date.now(),
@@ -221,7 +234,7 @@ export async function importServer(ctx: EngineCtx, folderPath: string, nameIn: s
     const major = mcVersion === null ? 21 : await deps.content.getDefaultJava(mcVersion);
     const ramMb = Math.max(512, Math.min(DEFAULT_RAM_MB, Math.floor(totalRamMb() / 2)));
     const cfg: ServerConfig = {
-      id, name, software: softwareIn, modKind: MOD_KIND_BY_SOFTWARE[softwareIn], mcVersion, build: null,
+      id, name, description: velocity || text === null ? '' : decodeMotd(parseProperties(text)['motd'] ?? ''), software: softwareIn, modKind: MOD_KIND_BY_SOFTWARE[softwareIn], mcVersion, build: null,
       customJarName: softwareIn === 'custom' ? jarFile.replace(/\.jar$/i, '') : null,
       folder, createdAt: Date.now(),
       settings: { ramMb, storageLimitMb: null, autoStart: false, autoRestartOnCrash: false, port, javaMajorOverride: mcVersion === null ? 21 : null, customIpHost: null },
@@ -234,6 +247,63 @@ export async function importServer(ctx: EngineCtx, folderPath: string, nameIn: s
     return clone(cfg);
   } catch (e) {
     if (copied) await rmWithRetry(folder).catch(() => undefined); // never delete the user's own folder
+    throw toAppException(e);
+  }
+}
+
+// ---------- import a single .jar ----------
+const ZIP_MAGIC = [0x50, 0x4b, 0x03, 0x04];
+
+export async function importJar(ctx: EngineCtx, input: ImportJarInput): Promise<ServerConfig> {
+  const { store, deps } = ctx;
+  if (typeof input !== 'object' || input === null) throw new AppException('INVALID_INPUT');
+  const name = validateName(input.name);
+  const description = validateDescription(input.description);
+  if (!isServerSoftware(input.software)) throw new AppException('INVALID_INPUT', 'Unknown software');
+  const software = input.software;
+  const velocity = software === 'velocity';
+  const src = input.jarPath;
+  if (typeof src !== 'string' || !path.isAbsolute(src) || !/\.jar$/i.test(src)) throw new AppException('INVALID_INPUT', 'A valid .jar file is required');
+  const head = Buffer.alloc(4);
+  try {
+    const handle = await fs.open(src, 'r');
+    try {
+      const st = await handle.stat();
+      if (!st.isFile()) throw new AppException('INVALID_INPUT', 'A valid .jar file is required');
+      await handle.read(head, 0, 4, 0);
+    } finally { await handle.close(); }
+  } catch (e) { throw e instanceof AppException ? e : new AppException('NOT_FOUND', 'Jar file not found'); }
+  if (!ZIP_MAGIC.every((b, i) => head[i] === b)) throw new AppException('INVALID_INPUT', 'This file is not a valid .jar');
+
+  const mcVersion = normOptional(input.mcVersion);
+  const build = normOptional(input.build);
+  const major = mcVersion === null ? 21 : await deps.content.getDefaultJava(mcVersion);
+  const ramMb = Math.max(512, Math.min(DEFAULT_RAM_MB, Math.floor(totalRamMb() / 2)));
+  const port = await suggestPort(store.all(), defaultPortFor(software));
+
+  const id = store.newId(name);
+  const folder = store.folderOf(id);
+  try {
+    await fs.mkdir(folder, { recursive: true });
+    const baseName = path.basename(src);
+    const jarFile = software === 'custom' ? baseName : 'server.jar';
+    await fs.copyFile(src, path.join(folder, jarFile));
+    if (!velocity) {
+      const motdLine = description === '' ? '' : `motd=${encodeMotd(description)}\n`;
+      await fs.writeFile(path.join(folder, 'server.properties'), `server-port=${port}\n${motdLine}`);
+    }
+    const cfg: ServerConfig = {
+      id, name, description, software, modKind: MOD_KIND_BY_SOFTWARE[software], mcVersion, build,
+      customJarName: software === 'custom' ? jarFile.replace(/\.jar$/i, '') : null,
+      folder, createdAt: Date.now(),
+      settings: { ramMb, storageLimitMb: null, autoStart: false, autoRestartOnCrash: false, port, javaMajorOverride: mcVersion === null ? 21 : null, customIpHost: null },
+      start: { jarFile, flags: suggestFlags(ramMb, major) },
+    };
+    await store.save(cfg);
+    deps.emit('servers:changed', null);
+    return clone(cfg);
+  } catch (e) {
+    await rmWithRetry(folder).catch((err) => deps.log.error('cleanup after failed jar import', err));
     throw toAppException(e);
   }
 }

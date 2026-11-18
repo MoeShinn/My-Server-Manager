@@ -6,7 +6,9 @@ export interface EngineApi {
   get(id: string): Promise<T.ServerConfig>;
   create(input: T.CreateServerInput): Promise<T.ServerConfig>; // downloads jar + Java, emits download:progress
   importFolder(folderPath: string, name: string, software: T.ServerSoftware, mcVersion: string | null): Promise<T.ServerConfig>; // copies the folder
+  importJar(input: T.ImportJarInput): Promise<T.ServerConfig>; // copies the jar into a new server folder
   remove(id: string, deleteFiles: boolean): Promise<void>;
+  setInfo(id: string, info: T.ServerInfoPatch): Promise<T.ServerConfig>; // name + description (MOTD); both accept § and & colour codes
   rename(id: string, name: string): Promise<void>;
   duplicate(id: string, newName: string): Promise<T.ServerConfig>;
   updateSettings(id: string, patch: Partial<T.ServerSettings>): Promise<T.ServerConfig>;

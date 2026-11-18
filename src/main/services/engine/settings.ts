@@ -1,13 +1,14 @@
 // FILE: src/main/services/engine/settings.ts
 import * as os from 'os';
 import { AppException } from '../../../shared/types';
+import { stripMcColors } from '../../../shared/mcText';
 
 export const totalRamMb = (): number => Math.floor(os.totalmem() / 1048576);
 
 export function validateName(v: unknown): string {
   if (typeof v !== 'string') throw new AppException('INVALID_INPUT', 'Name is required');
   const name = v.trim();
-  if (!name || name.length > 100) throw new AppException('INVALID_INPUT', 'Invalid name');
+  if (!name || name.length > 100 || stripMcColors(name).trim() === '') throw new AppException('INVALID_INPUT', 'Invalid name');
   return name;
 }
 

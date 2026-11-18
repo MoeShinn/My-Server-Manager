@@ -4,8 +4,10 @@ import { useNavigate } from 'react-router-dom';
 import { Copy, Pencil, Trash2 } from 'lucide-react';
 import type { ServerConfig, ServerStatus } from '@shared/types';
 import { useT } from '@/i18n';
+import { stripMcColors } from '@shared/mcText';
 import { Box, Button, ConfirmDialog, Modal, TextInput, Toggle, useToast } from '@/components/ui';
 import { useErrorToast } from '../hooks';
+import EditInfoModal from './EditInfoModal';
 
 interface Props {
   config: ServerConfig;
@@ -19,7 +21,7 @@ export default function ManageBox({ config, status, onChanged }: Props): JSX.Ele
   const toast = useToast();
   const toastError = useErrorToast();
 
-  const [renameOpen, setRenameOpen] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
   const [dupOpen, setDupOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [newName, setNewName] = useState('');
@@ -28,20 +30,6 @@ export default function ManageBox({ config, status, onChanged }: Props): JSX.Ele
 
   const stopped = status === null || status === 'stopped' || status === 'crashed';
   const nameOk = newName.trim().length > 0;
-
-  const doRename = async (): Promise<void> => {
-    setBusy(true);
-    try {
-      await window.api.servers.rename(config.id, newName.trim());
-      setRenameOpen(false);
-      toast.success(t('srv.dash.renamed'));
-      onChanged();
-    } catch (e) {
-      toastError(e);
-    } finally {
-      setBusy(false);
-    }
-  };
 
   const doDuplicate = async (): Promise<void> => {
     setBusy(true);
@@ -69,14 +57,13 @@ export default function ManageBox({ config, status, onChanged }: Props): JSX.Ele
   };
 
   const nameModal = (
-    kind: 'rename' | 'duplicate',
     open: boolean,
     onClose: () => void,
     onSubmit: () => void
   ): JSX.Element => (
     <Modal
       open={open}
-      title={kind === 'rename' ? t('srv.dash.renameTitle') : t('srv.dash.duplicateTitle')}
+      title={t('srv.dash.duplicateTitle')}
       onClose={onClose}
       footer={
         <>
@@ -84,7 +71,7 @@ export default function ManageBox({ config, status, onChanged }: Props): JSX.Ele
             {t('srv.dash.cancel')}
           </Button>
           <Button variant="primary" loading={busy} disabled={!nameOk || busy} onClick={onSubmit}>
-            {kind === 'rename' ? t('srv.dash.rename') : t('srv.dash.duplicate')}
+            {t('srv.dash.duplicate')}
           </Button>
         </>
       }
@@ -103,12 +90,9 @@ export default function ManageBox({ config, status, onChanged }: Props): JSX.Ele
           <Button
             variant="secondary"
             icon={<Pencil size={14} />}
-            onClick={() => {
-              setNewName(config.name);
-              setRenameOpen(true);
-            }}
+            onClick={() => setInfoOpen(true)}
           >
-            {t('srv.dash.rename')}
+            {t('srv.info.edit')}
           </Button>
           <Button
             variant="secondary"
@@ -136,21 +120,21 @@ export default function ManageBox({ config, status, onChanged }: Props): JSX.Ele
         {!stopped ? <div style={{ fontSize: 12, color: 'var(--muted)' }}>{t('srv.dash.manageNeedsStopped')}</div> : null}
       </div>
 
-      {nameModal('rename', renameOpen, () => setRenameOpen(false), () => void doRename())}
-      {nameModal('duplicate', dupOpen, () => setDupOpen(false), () => void doDuplicate())}
+      <EditInfoModal config={config} status={status} open={infoOpen} onClose={() => setInfoOpen(false)} />
+      {nameModal(dupOpen, () => setDupOpen(false), () => void doDuplicate())}
 
       <ConfirmDialog
         open={deleteOpen}
         title={t('srv.dash.deleteTitle')}
         message={
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <span>{t('srv.dash.deleteMessage', { name: config.name })}</span>
+            <span>{t('srv.dash.deleteMessage', { name: stripMcColors(config.name) })}</span>
             <Toggle checked={deleteFiles} onChange={setDeleteFiles} label={t('srv.dash.deleteFiles')} />
           </div>
         }
         confirmLabel={t('srv.dash.delete')}
         danger
-        requireText={config.name}
+        requireText={stripMcColors(config.name)}
         onCancel={() => setDeleteOpen(false)}
         onConfirm={() => void doRemove()}
       />

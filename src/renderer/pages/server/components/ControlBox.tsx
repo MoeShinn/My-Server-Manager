@@ -1,11 +1,12 @@
 // FILE: src/renderer/pages/server/components/ControlBox.tsx
 import { useState } from 'react';
-import { Play, RotateCw, Skull, Square } from 'lucide-react';
+import { Pencil, Play, RotateCw, Skull, Square } from 'lucide-react';
 import type { ServerConfig, ServerStatus } from '@shared/types';
 import { useT } from '@/i18n';
-import { Box, Button, ConfirmDialog } from '@/components/ui';
+import { Box, Button, ConfirmDialog, McText } from '@/components/ui';
 import { useErrorToast } from '../hooks';
 import { apiErrorInfo, formatDuration } from '../utils';
+import EditInfoModal from './EditInfoModal';
 import StatusBadge from './StatusBadge';
 import VersionBadge from './VersionBadge';
 
@@ -23,6 +24,7 @@ export default function ControlBox({ config, status, uptimeSec }: Props): JSX.El
   const [busy, setBusy] = useState<Busy>(null);
   const [eulaOpen, setEulaOpen] = useState(false);
   const [killOpen, setKillOpen] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
   const st: ServerStatus = status ?? 'stopped';
   const id = config.id;
 
@@ -67,7 +69,17 @@ export default function ControlBox({ config, status, uptimeSec }: Props): JSX.El
   return (
     <Box title={t('srv.dash.control')}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <div style={{ fontSize: 18, fontWeight: 700, wordBreak: 'break-word' }}>{config.name}</div>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+          <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div style={{ fontSize: 18, fontWeight: 700, wordBreak: 'break-word' }}>
+              <McText text={config.name} />
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--muted)', wordBreak: 'break-word' }}>
+              {config.description.trim() !== '' ? <McText text={config.description} /> : <span style={{ fontStyle: 'italic' }}>{t('srv.info.noDescription')}</span>}
+            </div>
+          </div>
+          <Button variant="ghost" size="sm" aria-label={t('srv.info.edit')} title={t('srv.info.edit')} icon={<Pencil size={14} />} onClick={() => setInfoOpen(true)} />
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <StatusBadge status={st} />
           <VersionBadge
@@ -144,6 +156,8 @@ export default function ControlBox({ config, status, uptimeSec }: Props): JSX.El
           ) : null}
         </div>
       </div>
+
+      <EditInfoModal config={config} status={status} open={infoOpen} onClose={() => setInfoOpen(false)} />
 
       <ConfirmDialog
         open={killOpen}

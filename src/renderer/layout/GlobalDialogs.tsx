@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { QuitProgress } from '@shared/types'
 import { api } from '@/api'
-import { Badge, Button, ConfirmDialog, Modal, Spinner, Toggle, useToast } from '@/components/ui'
+import { Badge, Button, ConfirmDialog, McText, Modal, Spinner, Toggle, useToast } from '@/components/ui'
 import type { BadgeColor } from '@/components/ui'
 import { useErrorText, useT } from '@/i18n'
 import { ACTIVE_STATUSES, useServersStore } from './stores'
@@ -134,7 +134,7 @@ export function GlobalDialogs(): JSX.Element {
             <ul className="divide-y divide-line rounded-lg border border-line">
               {progress.servers.map((s) => (
                 <li key={s.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
-                  <span className="min-w-0 truncate">{s.name}</span>
+                  <span className="min-w-0 truncate"><McText text={s.name} /></span>
                   <Badge color={QUIT_STATE_COLOR[s.state]}>{t(`app.quit.state.${s.state}`)}</Badge>
                 </li>
               ))}

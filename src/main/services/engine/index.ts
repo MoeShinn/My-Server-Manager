@@ -9,7 +9,8 @@ import { STOP_TIMEOUT_MS } from '../../../shared/constants';
 import { buildLaunchArgs, buildScript, flagsEqual, suggestFlags, validateFlags, validateJarName } from './flags';
 import { canBind, isPortFree, suggestPort, usedByApp } from './ports';
 import { ProcessManager } from './process';
-import { createServer, duplicateServer, importServer, removeServer, writeEula } from './provision';
+import { createServer, duplicateServer, importJar, importServer, removeServer, validateDescription, writeEula } from './provision';
+import { decodeMotd, encodeMotd, toSectionCodes } from '../../../shared/mcText';
 import type { EngineCtx } from './provision';
 import { readMaxPlayers, readProperties, syncPortToFiles, validatePropertiesPatch, writeProperties } from './properties';
 import { validateIpHost, validateJavaOverride, validateName, validatePortNumber, validateRam, validateStorageLimit } from './settings';
@@ -37,6 +38,22 @@ export function createEngineService(deps: ServiceDeps & { content: ContentServic
   // Prime max-players for servers that are not running yet.
   for (const c of store.all()) void readMaxPlayers(c.folder).then((n) => { pm.rt(c.id).maxPlayers = n; }).catch(() => undefined);
 
+  /** Keeps the cached description in step with `motd` in server.properties (edited by the Properties page, the file editor or the game). */
+  async function refreshDescription(cfg: ServerConfig): Promise<ServerConfig> {
+    if (cfg.software === 'velocity') return cfg;
+    const motd = (await readProperties(cfg.folder).catch(() => ({} as Record<string, string>)))['motd'];
+    if (motd === undefined) return cfg;
+    const decoded = decodeMotd(motd);
+    if (toSectionCodes(cfg.description) === decoded) return cfg;
+    const next: ServerConfig = { ...cfg, description: decoded };
+    await store.save(next);
+    return next;
+  }
+  // Prime descriptions of servers saved by an older version (no description yet).
+  void Promise.all(store.all().map((c) => refreshDescription(c))).then((list) => {
+    if (list.some((c, i) => c !== store.all()[i])) emit('servers:changed', null);
+  }).catch(() => undefined);
+
   const effectiveMajor = async (cfg: ServerConfig, override: number | null): Promise<number> =>
     override ?? content.getDefaultJava(cfg.mcVersion);
 
@@ -52,14 +69,15 @@ export function createEngineService(deps: ServiceDeps & { content: ContentServic
       return store.sorted().map((c) => {
         const rt = pm.peek(c.id);
         return {
-          id: c.id, name: c.name, software: c.software, modKind: c.modKind, mcVersion: c.mcVersion, build: c.build,
+          id: c.id, name: c.name, description: c.description, software: c.software, modKind: c.modKind, mcVersion: c.mcVersion, build: c.build,
           customJarName: c.customJarName, status: rt?.status ?? 'stopped', playersOnline: rt?.online.length ?? 0,
           playersMax: rt?.maxPlayers ?? 20, port: c.settings.port,
         };
       });
     },
-    async get(id) { return clone(store.require(id)); },
+    async get(id) { return clone(await refreshDescription(store.require(id))); },
     create: (input) => createServer(ctx, input),
+    importJar: (input) => importJar(ctx, input),
     importFolder: (folderPath, name, software, mcVersion) => importServer(ctx, folderPath, name, software, mcVersion),
     remove: (id, deleteFiles) => removeServer(ctx, id, deleteFiles),
     duplicate: (id, newName) => duplicateServer(ctx, id, newName),
@@ -68,6 +86,19 @@ export function createEngineService(deps: ServiceDeps & { content: ContentServic
       const cfg = store.require(id);
       await store.save({ ...cfg, name: validateName(name) });
       emit('servers:changed', null);
+    },
+
+    async setInfo(id, info) {
+      const cfg = store.require(id);
+      const name = validateName(info?.name);
+      const description = validateDescription(info?.description);
+      const changedDescription = toSectionCodes(description) !== toSectionCodes(cfg.description);
+      const updated: ServerConfig = { ...cfg, name, description };
+      await store.save(updated);
+      // The description is the MOTD shown in the Minecraft server list. Velocity keeps its MOTD in velocity.toml, so it stays app-only.
+      if (changedDescription && cfg.software !== 'velocity') await writeProperties(cfg.folder, { motd: encodeMotd(description) });
+      emit('servers:changed', null);
+      return clone(updated);
     },
 
     async updateSettings(id, patch) {
@@ -167,6 +198,10 @@ export function createEngineService(deps: ServiceDeps & { content: ContentServic
         emit('servers:changed', null);
       }
       if (clean['max-players'] !== undefined) await pm.refreshMaxPlayers(id);
+      if (clean.motd !== undefined) {
+        await store.save({ ...store.require(id), description: decodeMotd(clean.motd) });
+        emit('servers:changed', null);
+      }
     },
 
     getPlayers: (id) => pm.getPlayers(id),
