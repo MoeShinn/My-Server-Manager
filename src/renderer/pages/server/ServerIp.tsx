@@ -1,10 +1,10 @@
 // FILE: src/renderer/pages/server/ServerIp.tsx
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Copy, ExternalLink, Power, PowerOff } from 'lucide-react';
+import { Copy, ExternalLink, LogIn, Power, PowerOff, RefreshCw } from 'lucide-react';
 import type { DownloadProgress, PlayitStatus } from '@shared/types';
 import { useT } from '@/i18n';
-import { Box, Button, ProgressBar, Spinner, TextInput, useToast } from '@/components/ui';
+import { Box, Button, ConfirmDialog, ProgressBar, Spinner, TextInput, useToast } from '@/components/ui';
 import { useCopy, useErrorToast, useServerConfig } from './hooks';
 import { apiErrorInfo, validateHost } from './utils';
 import IpBoxes from './components/IpBoxes';
@@ -29,7 +29,8 @@ export default function ServerIp(): JSX.Element {
 
   const [playit, setPlayit] = useState<PlayitStatus | null>(null);
   const [download, setDownload] = useState<DownloadProgress | null>(null);
-  const [busy, setBusy] = useState<'start' | 'stop' | null>(null);
+  const [busy, setBusy] = useState<'start' | 'stop' | 'reset' | null>(null);
+  const [confirmReset, setConfirmReset] = useState(false);
   const [hostText, setHostText] = useState('');
   const [saving, setSaving] = useState(false);
   const hostInit = useRef(false);
@@ -77,6 +78,7 @@ export default function ServerIp(): JSX.Element {
   const state = playit?.state ?? 'stopped';
   const canStart = state === 'not-installed' || state === 'stopped' || state === 'error';
   const canStop = state === 'starting' || state === 'needs-claim' || state === 'running';
+  const canReset = state === 'stopped' || state === 'needs-claim' || state === 'running' || state === 'error';
   const working = busy !== null || download !== null || state === 'starting';
   const check = validateHost(hostText);
   const percent =
@@ -101,6 +103,27 @@ export default function ServerIp(): JSX.Element {
       toastError(e);
     } finally {
       setBusy(null);
+    }
+  };
+
+  const resetPlayit = async (): Promise<void> => {
+    setBusy('reset');
+    try {
+      await window.api.content.playitReset();
+      setConfirmReset(false);
+      toast.success(t('srv.ip.playit.reloginDone'));
+    } catch (e) {
+      toastError(e);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const checkAppUpdate = async (): Promise<void> => {
+    try {
+      await window.api.app.checkUpdate();
+    } catch (e) {
+      toastError(e);
     }
   };
 
@@ -173,6 +196,19 @@ export default function ServerIp(): JSX.Element {
             >
               {t('srv.ip.playit.stop')}
             </Button>
+            <Button
+              variant="ghost"
+              icon={<LogIn size={14} />}
+              disabled={!canReset || busy !== null || download !== null}
+              onClick={() => setConfirmReset(true)}
+            >
+              {t('srv.ip.playit.relogin')}
+            </Button>
+            {state === 'unsupported' ? (
+              <Button variant="primary" icon={<RefreshCw size={14} />} onClick={() => void checkAppUpdate()}>
+                {t('srv.ip.playit.checkUpdate')}
+              </Button>
+            ) : null}
             {state === 'needs-claim' && playit?.claimUrl ? (
               <>
                 <Button
@@ -242,6 +278,16 @@ export default function ServerIp(): JSX.Element {
           </div>
         </details>
       </Box>
+      <ConfirmDialog
+        open={confirmReset}
+        title={t('srv.ip.playit.reloginTitle')}
+        message={t('srv.ip.playit.reloginMessage')}
+        confirmLabel={t('srv.ip.playit.reloginConfirm')}
+        danger
+        loading={busy === 'reset'}
+        onConfirm={() => void resetPlayit()}
+        onCancel={() => setConfirmReset(false)}
+      />
     </div>
   );
 }

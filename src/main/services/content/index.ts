@@ -30,7 +30,7 @@ export function createContentService(deps: ServiceDeps): ContentService {
   const java = createJavaManager({ paths, downloader, getDataJson, log });
   const versions = createVersions({ paths, getSettings, http, log });
   const modrinth = createModrinth({ paths, http, downloader, getDataJson, log });
-  const playit = createPlayit({ paths, http, downloader, emit, log });
+  const playit = createPlayit({ paths, http, downloader, emit, log, getDataJson, appVersion: config.appVersion });
 
   return {
     listVersions: (software, opts) => versions.listVersions(software, opts),
@@ -55,6 +55,7 @@ export function createContentService(deps: ServiceDeps): ContentService {
     playitStatus: () => playit.status(),
     playitStart: () => playit.start(),
     playitStop: () => playit.stop(),
+    playitReset: () => playit.reset(),
 
     // ---- internal (not exposed to the renderer) ----
     getDataJson,

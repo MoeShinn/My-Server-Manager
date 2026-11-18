@@ -140,5 +140,13 @@
       "name": "Tiếng Việt - English",
       "file": "language/vi-en.json"
     }
-  ]
+  ],
+  "playit": {
+    "rules": [
+      {
+        "app": "1.0",
+        "agent": "v0.17.1"
+      }
+    ]
+  }
 }

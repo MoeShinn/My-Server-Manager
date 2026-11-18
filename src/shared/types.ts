@@ -22,7 +22,7 @@ export interface ContentItem { id: string; title: string; description: string; a
 export interface ContentSearchQuery { serverId: string; query: string; filters: { author?: string; title?: string; description?: string }; page: number; pageSize: number; }
 export interface ContentSearchResult { items: ContentItem[]; total: number; }
 export interface DownloadProgress { taskId: string; label: string; receivedBytes: number; totalBytes: number | null; state: 'running' | 'done' | 'error' | 'cancelled'; }
-export interface PlayitStatus { state: 'not-installed' | 'stopped' | 'starting' | 'needs-claim' | 'running' | 'error'; claimUrl: string | null; }
+export interface PlayitStatus { state: 'not-installed' | 'stopped' | 'starting' | 'needs-claim' | 'running' | 'error' | 'unsupported'; claimUrl: string | null; }
 export interface FileEntry { name: string; relPath: string; isDir: boolean; sizeBytes: number; modifiedMs: number; }
 export interface FileContent { content: string; binary: boolean; tooLarge: boolean; }
 export interface LanguageInfo { code: string; name: string; installed: boolean; updateAvailable: boolean; inUse: boolean; }
@@ -32,4 +32,6 @@ export interface AppConfig { appName: string; appId: string; appVersion: string;
 export interface AppSettings { language: string; dataDir: string; theme: 'dark' | 'light'; closeAction: 'tray' | 'ask' | 'quit'; launchAtLogin: boolean; autoCheckUpdate: boolean; versionCacheDays: number; alwaysFetchFreshVersions: boolean; showDuplicateBuilds: boolean; trayNoticeShown: boolean; }
 export interface AppPaths { userData: string; dataDir: string; serversDir: string; javaDir: string; cacheDir: string; languageDir: string; logsDir: string; resourcesDir: string; }
 type JavaPkg = { url: string; sha256: string | null; archive: 'zip' | 'tar.gz' } | null;
-export interface DataJson { schemaVersion: number; java: { minMc: string; java: number }[]; javaDownloads: Record<string, { windowsX64: JavaPkg; linuxX64: JavaPkg }>; pluginLoaders: Record<string, string[]>; languages: { code: string; name: string; file: string }[]; }
+export interface DataJson { schemaVersion: number; java: { minMc: string; java: number }[]; javaDownloads: Record<string, { windowsX64: JavaPkg; linuxX64: JavaPkg }>; pluginLoaders: Record<string, string[]>; languages: { code: string; name: string; file: string }[]; playitRules: PlayitRule[]; }
+/** app: semver range of app versions ("1.0" = 1.0.x); agent: playit tag ("v0.17.1") or "unsupported". */
+export interface PlayitRule { app: string; agent: string; }

@@ -47,6 +47,7 @@ export interface ContentApi {
   playitStatus(): Promise<T.PlayitStatus>;
   playitStart(): Promise<void>;
   playitStop(): Promise<void>;
+  playitReset(): Promise<void>; // forget the playit login (key file) so the user links the agent again
 }
 export interface ContentService extends ContentApi {
   getDataJson(): Promise<T.DataJson>; // remote data.json with local cache + bundled fallback

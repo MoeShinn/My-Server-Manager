@@ -54,7 +54,15 @@ export function parseDataJson(raw: unknown): DataJson | null {
     if (code && name && file) languages.push({ code, name, file });
   }
 
-  return { schemaVersion, java, javaDownloads, pluginLoaders, languages };
+  const playitRules: DataJson['playitRules'] = [];
+  for (const item of asArray(asRecord(raw.playit).rules)) {
+    if (!isRecord(item)) continue;
+    const app = asString(item.app);
+    const agent = asString(item.agent);
+    if (app && agent) playitRules.push({ app, agent });
+  }
+
+  return { schemaVersion, java, javaDownloads, pluginLoaders, languages, playitRules };
 }
 
 export function createDataJsonProvider(deps: {
