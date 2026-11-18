@@ -1,0 +1,77 @@
+# ============================================================
+# CẤU HÌNH ỨNG DỤNG (đọc lúc app khởi động, bản đóng gói nằm trong resources)
+# ============================================================
+
+# ---------------- Ứng dụng ----------------
+
+# Tên hiển thị của app (thanh tiêu đề, khay hệ thống, thông báo).
+# Ví dụ: app_name = "Cube Server Manager"
+app_name = "My Server Manager"
+
+# Mã định danh cố định của app trên Windows (dùng cho trình cài đặt và thông báo).
+# Ví dụ: "com.tenban.mcservermanager"
+# LƯU Ý: KHÔNG đổi sau khi đã phát hành, nếu đổi thì Windows coi là một app khác.
+app_id = "com.example.mcservermanager"
+
+# Phiên bản app, theo dạng số.số.số (semver).
+# Ví dụ: "1.0.1"
+# LƯU Ý: đây là nơi DUY NHẤT để đổi phiên bản, lúc build sẽ tự đồng bộ vào package.json.
+app_version = "1.0.0"
+
+# ---------------- Nguồn dữ liệu ----------------
+
+# Kho GitHub chứa bản phát hành (release) của app, dạng "chủ-sở-hữu/tên-kho".
+# Ví dụ: "tenban/mc-server-manager". Dùng để kiểm tra và tải bản cập nhật.
+app_repo = "OWNER/REPO"
+
+# Kho GitHub chứa data.json và thư mục ngôn ngữ, dạng "chủ-sở-hữu/tên-kho".
+# Có thể trùng với app_repo. Ví dụ: "tenban/mc-server-manager-data".
+data_repo = "OWNER/REPO"
+
+# Nhánh của kho dữ liệu cần đọc. Thường là "main".
+data_branch = "main"
+
+# Tên thư mục chứa các file ngôn ngữ trong kho dữ liệu (cũng là thư mục đóng gói sẵn).
+# Ví dụ: "language" nghĩa là file nằm ở language/vi.json
+language_folder = "language"
+
+# Mã ngôn ngữ mặc định ở lần chạy đầu tiên. Phải là ngôn ngữ đã đóng gói sẵn.
+# Ví dụ: "en", "vi", "vi-en"
+default_language = "en"
+
+# ---------------- Cửa sổ ----------------
+
+# Cách mở cửa sổ: "maximized" (phóng to toàn màn hình) hoặc "normal" (theo kích thước bên dưới).
+window_mode = "maximized"
+
+# Chiều rộng và chiều cao cửa sổ (pixel), chỉ dùng khi window_mode = "normal".
+# Ví dụ: 1280 và 800. Nên để không nhỏ hơn 960x600 để giao diện không bị chật.
+window_width = 1280
+window_height = 800
+
+# ---------------- Liên kết pháp lí ----------------
+
+# Địa chỉ https của Chính sách riêng tư, mở khi người dùng bấm nút trong trang Cài đặt.
+# Ví dụ: "https://github.com/tenban/repo/blob/main/legal/PRIVACY.md". Để rỗng thì nút bị vô hiệu.
+privacy_policy_url = ""
+
+# Địa chỉ https của Giấy phép phần mềm. Ví dụ: ".../blob/main/legal/LICENSE".
+# Để rỗng thì nút bị vô hiệu.
+license_url = ""
+
+# ---------------- Logo ----------------
+
+# Đường dẫn icon của app, tính từ thư mục gốc của dự án. Nên là PNG vuông từ 256x256 trở lên.
+# Chạy "node tools/make-icon.mjs" để tạo icon tạm, rồi thay bằng logo của bạn.
+app_icon = "assets/icon.png"
+
+# Icon riêng cho trình cài đặt (.ico). Để rỗng thì dùng app_icon.
+# LƯU Ý: chỉ điền khi file đó thật sự tồn tại.
+installer_icon = ""
+
+# ---------------- Mạng ----------------
+
+# Chuỗi User-Agent gửi kèm mọi yêu cầu mạng của app.
+# Ví dụ: "McServerManager/1.0 (github.com/tenban)"
+# LƯU Ý: nên ghi kèm tên GitHub của bạn để liên hệ, vì PaperMC và Modrinth yêu cầu điều này.
+user_agent = "McServerManager/1.0"

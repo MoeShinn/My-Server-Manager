@@ -1,0 +1,144 @@
+{
+  "schemaVersion": 1,
+  "java": [
+    {
+      "minMc": "1.2.5",
+      "java": 8
+    },
+    {
+      "minMc": "1.17",
+      "java": 17
+    },
+    {
+      "minMc": "1.18",
+      "java": 17
+    },
+    {
+      "minMc": "1.20.5",
+      "java": 21
+    },
+    {
+      "minMc": "26.1",
+      "java": 25
+    }
+  ],
+  "javaDownloads": {
+    "8": {
+      "windowsX64": {
+        "url": "https://api.adoptium.net/v3/binary/latest/8/ga/windows/x64/jre/hotspot/normal/eclipse",
+        "sha256": null,
+        "archive": "zip"
+      },
+      "linuxX64": {
+        "url": "https://api.adoptium.net/v3/binary/latest/8/ga/linux/x64/jre/hotspot/normal/eclipse",
+        "sha256": null,
+        "archive": "tar.gz"
+      }
+    },
+    "11": {
+      "windowsX64": {
+        "url": "https://api.adoptium.net/v3/binary/latest/11/ga/windows/x64/jre/hotspot/normal/eclipse",
+        "sha256": null,
+        "archive": "zip"
+      },
+      "linuxX64": {
+        "url": "https://api.adoptium.net/v3/binary/latest/11/ga/linux/x64/jre/hotspot/normal/eclipse",
+        "sha256": null,
+        "archive": "tar.gz"
+      }
+    },
+    "16": {
+      "windowsX64": {
+        "url": "https://api.adoptium.net/v3/binary/latest/16/ga/windows/x64/jre/hotspot/normal/eclipse",
+        "sha256": null,
+        "archive": "zip"
+      },
+      "linuxX64": {
+        "url": "https://api.adoptium.net/v3/binary/latest/16/ga/linux/x64/jre/hotspot/normal/eclipse",
+        "sha256": null,
+        "archive": "tar.gz"
+      }
+    },
+    "17": {
+      "windowsX64": {
+        "url": "https://api.adoptium.net/v3/binary/latest/17/ga/windows/x64/jre/hotspot/normal/eclipse",
+        "sha256": null,
+        "archive": "zip"
+      },
+      "linuxX64": {
+        "url": "https://api.adoptium.net/v3/binary/latest/17/ga/linux/x64/jre/hotspot/normal/eclipse",
+        "sha256": null,
+        "archive": "tar.gz"
+      }
+    },
+    "21": {
+      "windowsX64": {
+        "url": "https://api.adoptium.net/v3/binary/latest/21/ga/windows/x64/jre/hotspot/normal/eclipse",
+        "sha256": null,
+        "archive": "zip"
+      },
+      "linuxX64": {
+        "url": "https://api.adoptium.net/v3/binary/latest/21/ga/linux/x64/jre/hotspot/normal/eclipse",
+        "sha256": null,
+        "archive": "tar.gz"
+      }
+    },
+    "25": {
+      "windowsX64": {
+        "url": "https://api.adoptium.net/v3/binary/latest/25/ga/windows/x64/jre/hotspot/normal/eclipse",
+        "sha256": null,
+        "archive": "zip"
+      },
+      "linuxX64": {
+        "url": "https://api.adoptium.net/v3/binary/latest/25/ga/linux/x64/jre/hotspot/normal/eclipse",
+        "sha256": null,
+        "archive": "tar.gz"
+      }
+    }
+  },
+  "pluginLoaders": {
+    "paper": [
+      "paper",
+      "spigot",
+      "bukkit"
+    ],
+    "leaf": [
+      "paper",
+      "spigot",
+      "bukkit"
+    ],
+    "purpur": [
+      "purpur",
+      "paper",
+      "spigot",
+      "bukkit"
+    ],
+    "folia": [
+      "folia"
+    ],
+    "fabric": [
+      "fabric"
+    ],
+    "velocity": [
+      "velocity"
+    ],
+    "vanilla": []
+  },
+  "languages": [
+    {
+      "code": "en",
+      "name": "English",
+      "file": "language/en.json"
+    },
+    {
+      "code": "vi",
+      "name": "Tiếng Việt",
+      "file": "language/vi.json"
+    },
+    {
+      "code": "vi-en",
+      "name": "Tiếng Việt - English",
+      "file": "language/vi-en.json"
+    }
+  ]
+}

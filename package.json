@@ -1,0 +1,48 @@
+{
+  "name": "mc-server-manager",
+  "version": "1.0.0",
+  "description": "Desktop app to create and manage multiple Minecraft Java servers",
+  "author": "Minecraft Server Manager",
+  "private": true,
+  "main": "./out/main/index.js",
+  "scripts": {
+    "predev": "node tools/build-language.mjs",
+    "dev": "electron-vite dev",
+    "prebuild": "node tools/build-language.mjs",
+    "build": "electron-vite build",
+    "prepare-build": "node scripts/prepare-build.mjs",
+    "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
+    "typecheck:web": "tsc --noEmit -p tsconfig.web.json --composite false",
+    "typecheck": "npm run typecheck:node && npm run typecheck:web"
+  },
+  "dependencies": {
+    "electron-updater": "^6.6.2",
+    "extract-zip": "^2.0.1",
+    "pidusage": "^3.0.2",
+    "semver": "^7.7.2",
+    "smol-toml": "^1.4.1"
+  },
+  "devDependencies": {
+    "@monaco-editor/react": "^4.7.0",
+    "@types/node": "^22.15.0",
+    "@types/pidusage": "^2.0.5",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@types/semver": "^7.7.0",
+    "@vitejs/plugin-react": "^4.7.0",
+    "autoprefixer": "^10.4.21",
+    "electron": "^39.0.0",
+    "electron-builder": "^26.0.12",
+    "electron-vite": "^4.0.0",
+    "lucide-react": "^0.468.0",
+    "monaco-editor": "^0.57.0",
+    "postcss": "^8.5.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.30.0",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5",
+    "zustand": "^5.0.3"
+  }
+}
