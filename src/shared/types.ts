@@ -12,8 +12,10 @@ export interface ServerSettings { ramMb: number; storageLimitMb: number | null; 
 export interface ServerConfig { id: string; name: string; description: string; software: ServerSoftware; modKind: ModKind; mcVersion: string | null; build: string | null; customJarName: string | null; folder: string; createdAt: number; settings: ServerSettings; start: StartOptions; }
 export interface ServerSummary { id: string; name: string; description: string; software: ServerSoftware; modKind: ModKind; mcVersion: string | null; build: string | null; customJarName: string | null; status: ServerStatus; playersOnline: number; playersMax: number; port: number; }
 export interface CreateServerInput { name: string; description?: string; software: ServerSoftware; modKind: ModKind; mcVersion: string | null; build: string | null; customJarPath: string | null; eulaAccepted: boolean; settings: Partial<ServerSettings> & { ramMb: number }; }
-/** Import a single server .jar: the app makes a fresh server folder and copies the jar into it. */
+/** Import a server: the app makes a fresh server folder and copies everything next to the chosen .jar into it. */
 export interface ImportJarInput { jarPath: string; name: string; description: string | null; software: ServerSoftware; mcVersion: string | null; build: string | null; }
+/** Info found in <jar folder>/.mcmanager/config.json. complete = no need to ask the user anything. */
+export interface ImportPrefill { name: string | null; description: string | null; software: ServerSoftware | null; mcVersion: string | null; build: string | null; complete: boolean; /** Folder that will be copied and its size (logs etc. excluded). */ folderPath: string; sizeMb: number; }
 export interface ServerInfoPatch { name: string; description: string; }
 export interface ConsoleLine { ts: number; level: 'info' | 'warn' | 'error' | 'command' | 'system'; text: string; textKey?: string; params?: Record<string, string | number>; }
 export interface ServerStats { cpuPercent: number; ramUsedMb: number; diskUsedMb: number; uptimeSec: number; /** Ticks per second (0-20). null = unknown / not supported by this server software. */ tps: number | null; }

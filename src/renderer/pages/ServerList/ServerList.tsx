@@ -2,11 +2,13 @@ import { FileUp, Plus, Search } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { stripMcColors } from '@shared/mcText'
+import type { ImportPrefill } from '@shared/types'
 import { api } from '@/api'
-import { Badge, Box, Button, McText, StatusBadge, TextInput, normalizeText, useToast } from '@/components/ui'
+import { Badge, Box, Button, ConfirmDialog, McText, StatusBadge, TextInput, normalizeText, useToast } from '@/components/ui'
 import { useErrorText, useT } from '@/i18n'
 import { ServerToggleButton, useServerActions } from '@/layout/serverActions'
 import { useServersStore } from '@/layout/stores'
+import { formatMb } from '../Settings/format'
 import { ImportJarModal } from './ImportJarModal'
 
 export default function ServerList(): JSX.Element {
@@ -20,6 +22,10 @@ export default function ServerList(): JSX.Element {
   const [query, setQuery] = useState('')
 
   const [importPath, setImportPath] = useState<string | null>(null)
+  const [importPrefill, setImportPrefill] = useState<ImportPrefill | null>(null)
+  const [picking, setPicking] = useState(false)
+  const [pending, setPending] = useState<{ file: string; info: ImportPrefill } | null>(null)
+  const [importingNow, setImportingNow] = useState(false)
 
   const filtered = useMemo(() => {
     const q = normalizeText(query.trim())
@@ -27,11 +33,46 @@ export default function ServerList(): JSX.Element {
   }, [servers, query])
 
   async function pickImportJar(): Promise<void> {
+    setPicking(true)
     try {
       const file = await api.app.pickFile([{ name: 'JAR', extensions: ['jar'] }])
-      if (file) setImportPath(file)
+      if (!file) return
+      const info = await api.servers.inspectImport(file)
+      setPending({ file, info }) // ask for confirmation (folder + size) before copying anything
     } catch (err) {
       toast.error(errText(err))
+    } finally {
+      setPicking(false)
+    }
+  }
+
+  async function confirmImport(): Promise<void> {
+    if (!pending) return
+    const { file, info } = pending
+    if (!(info.complete && info.name && info.software)) {
+      // Something is missing in .mcmanager/config.json (or there is none): ask the user in the form.
+      setPending(null)
+      setImportPrefill(info)
+      setImportPath(file)
+      return
+    }
+    setImportingNow(true)
+    try {
+      const cfg = await api.servers.importJar({
+        jarPath: file,
+        name: info.name,
+        description: info.description,
+        software: info.software,
+        mcVersion: info.mcVersion,
+        build: info.build
+      })
+      setPending(null)
+      toast.success(t('servers.importDone'))
+      navigate(`/server/${cfg.id}`)
+    } catch (err) {
+      toast.error(errText(err))
+    } finally {
+      setImportingNow(false)
     }
   }
 
@@ -49,7 +90,7 @@ export default function ServerList(): JSX.Element {
             <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
             <TextInput value={query} onChange={setQuery} placeholder={t('servers.searchPlaceholder')} className="pl-9" />
           </div>
-          <Button icon={<FileUp size={15} />} onClick={() => void pickImportJar()}>
+          <Button icon={<FileUp size={15} />} loading={picking} onClick={() => void pickImportJar()}>
             {t('servers.import')}
           </Button>
           <Button variant="primary" icon={<Plus size={15} />} onClick={() => navigate('/servers/new')}>
@@ -104,8 +145,26 @@ export default function ServerList(): JSX.Element {
         </div>
       )}
 
+      <ConfirmDialog
+        open={pending !== null}
+        title={t('servers.importConfirmTitle')}
+        message={
+          pending ? (
+            <div className="space-y-2">
+              <p>{t('servers.importConfirmMessage', { size: formatMb(pending.info.sizeMb) })}</p>
+              <div className="break-all rounded-lg border border-line bg-panel-2 px-3 py-2 text-xs text-muted">{pending.info.folderPath}</div>
+            </div>
+          ) : null
+        }
+        confirmLabel={t('servers.importConfirm')}
+        loading={importingNow}
+        onConfirm={() => void confirmImport()}
+        onCancel={() => (importingNow ? undefined : setPending(null))}
+      />
+
       <ImportJarModal
         jarPath={importPath}
+        prefill={importPrefill}
         onClose={() => setImportPath(null)}
         onImported={(cfg) => {
           setImportPath(null)

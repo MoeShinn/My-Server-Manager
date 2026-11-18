@@ -6,7 +6,8 @@ export interface EngineApi {
   get(id: string): Promise<T.ServerConfig>;
   create(input: T.CreateServerInput): Promise<T.ServerConfig>; // downloads jar + Java, emits download:progress
   importFolder(folderPath: string, name: string, software: T.ServerSoftware, mcVersion: string | null): Promise<T.ServerConfig>; // copies the folder
-  importJar(input: T.ImportJarInput): Promise<T.ServerConfig>; // copies the jar into a new server folder
+  importJar(input: T.ImportJarInput): Promise<T.ServerConfig>; // copies the jar's whole folder into a new server folder
+  inspectImport(jarPath: string): Promise<T.ImportPrefill>; // reads <jar folder>/.mcmanager/config.json to pre-fill the import dialog
   remove(id: string, deleteFiles: boolean): Promise<void>;
   setInfo(id: string, info: T.ServerInfoPatch): Promise<T.ServerConfig>; // name + description (MOTD); both accept § and & colour codes
   rename(id: string, name: string): Promise<void>;

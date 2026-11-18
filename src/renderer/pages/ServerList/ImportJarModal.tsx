@@ -1,7 +1,7 @@
 import { RefreshCw } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { cleanDescription, stripMcColors } from '@shared/mcText'
-import type { ServerConfig, ServerSoftware, VersionEntry } from '@shared/types'
+import type { ImportPrefill, ServerConfig, ServerSoftware, VersionEntry } from '@shared/types'
 import { api } from '@/api'
 import { Badge, Button, Field, Modal, Select, Spinner, TextInput, McTextEditor, useToast } from '@/components/ui'
 import type { SelectOption } from '@/components/ui'
@@ -33,11 +33,13 @@ type VersionsState = { status: 'idle' } | { status: 'loading' } | { status: 'err
 
 interface Props {
   jarPath: string | null
+  /** Info read from .mcmanager/config.json (null = none found). Whatever is missing is guessed from the file name. */
+  prefill?: ImportPrefill | null
   onClose: () => void
   onImported: (cfg: ServerConfig) => void
 }
 
-export function ImportJarModal({ jarPath, onClose, onImported }: Props): JSX.Element {
+export function ImportJarModal({ jarPath, prefill = null, onClose, onImported }: Props): JSX.Element {
   const t = useT()
   const toast = useToast()
   const errText = useErrorText()
@@ -59,12 +61,15 @@ export function ImportJarModal({ jarPath, onClose, onImported }: Props): JSX.Ele
   useEffect(() => {
     if (!jarPath) return
     const g = guessFromJarName(fileName)
-    setName(fileName.replace(/\.jar$/i, ''))
-    setDescription('')
-    setSoftware(g.software)
-    setGuess(g.software !== 'custom' || g.mcVersion ? g : null)
+    const sw = prefill?.software ?? g.software
+    const mc = prefill?.mcVersion ?? g.mcVersion
+    const bd = prefill?.mcVersion ? (prefill.build ?? null) : g.build
+    setName(prefill?.name ?? fileName.replace(/\.jar$/i, ''))
+    setDescription(prefill?.description ?? '')
+    setSoftware(sw)
+    setGuess(sw !== 'custom' || mc ? { software: sw, mcVersion: mc, build: bd } : null)
     setSelectedKey('')
-    setManualMc(g.software === 'custom' && g.mcVersion ? g.mcVersion : '')
+    setManualMc(sw === 'custom' && mc ? mc : '')
     setShowErrors(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jarPath])
@@ -239,7 +244,7 @@ export function ImportJarModal({ jarPath, onClose, onImported }: Props): JSX.Ele
                 onClick={() => setReloadToken((n) => n + 1)}
               />
             </div>
-            {guess && guess.software === software && guess.mcVersion && selectedEntry && (
+            {guess && !prefill?.mcVersion && guess.software === software && guess.mcVersion && selectedEntry && (
               <p className="text-xs text-muted">{t('servers.importGuessed', { software: t(`create.software.${software}`), version: guess.mcVersion })}</p>
             )}
           </Field>

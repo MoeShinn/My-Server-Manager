@@ -9,7 +9,7 @@ import { STOP_TIMEOUT_MS } from '../../../shared/constants';
 import { buildLaunchArgs, buildScript, flagsEqual, suggestFlags, validateFlags, validateJarName } from './flags';
 import { canBind, isPortFree, suggestPort, usedByApp } from './ports';
 import { ProcessManager } from './process';
-import { createServer, duplicateServer, importJar, importServer, removeServer, validateDescription, writeEula } from './provision';
+import { createServer, duplicateServer, importJar, importServer, inspectImport, removeServer, validateDescription, writeEula } from './provision';
 import { decodeMotd, encodeMotd, toSectionCodes } from '../../../shared/mcText';
 import type { EngineCtx } from './provision';
 import { readMaxPlayers, readProperties, syncPortToFiles, validatePropertiesPatch, writeProperties } from './properties';
@@ -80,6 +80,7 @@ export function createEngineService(deps: ServiceDeps & { content: ContentServic
     async get(id) { return clone(await refreshDescription(store.require(id))); },
     create: (input) => createServer(ctx, input),
     importJar: (input) => importJar(ctx, input),
+    inspectImport: (jarPath) => inspectImport(ctx, jarPath),
     importFolder: (folderPath, name, software, mcVersion) => importServer(ctx, folderPath, name, software, mcVersion),
     remove: (id, deleteFiles) => removeServer(ctx, id, deleteFiles),
     duplicate: (id, newName) => duplicateServer(ctx, id, newName),

@@ -2,7 +2,7 @@
 import { promises as fs } from 'fs';
 import * as path from 'path';
 import { AppException } from '../../../shared/types';
-import type { CreateServerInput, ImportJarInput, ServerConfig, ServerSoftware } from '../../../shared/types';
+import type { CreateServerInput, ImportJarInput, ImportPrefill, ServerConfig, ServerSoftware } from '../../../shared/types';
 import { cleanDescription, decodeMotd, encodeMotd } from '../../../shared/mcText';
 import type { ContentService, ServiceDeps } from '../../../shared/services';
 import { DEFAULT_PORT, DEFAULT_RAM_MB, DEFAULT_STORAGE_LIMIT_MB, MOD_KIND_BY_SOFTWARE, SERVER_META_DIR } from '../../../shared/constants';
@@ -12,9 +12,9 @@ import type { ProcessManager } from './process';
 import { parseProperties, writeProperties, syncPortToFiles } from './properties';
 import { totalRamMb, validateIpHost, validateJavaOverride, validateName, validatePortNumber, validateRam, validateStorageLimit } from './settings';
 import type { DiskUsageCache } from './stats';
-import { isModKind, isServerSoftware } from './store';
+import { isModKind, isServerSoftware, normalizeConfig } from './store';
 import type { ServerStore } from './store';
-import { clone, isInside, pathExists, readTextIfExists, rmWithRetry, toAppException } from './util';
+import { clone, isInside, isRecord, pathExists, readTextIfExists, rmWithRetry, toAppException } from './util';
 
 export interface EngineCtx {
   deps: ServiceDeps & { content: ContentService };
@@ -251,18 +251,11 @@ export async function importServer(ctx: EngineCtx, folderPath: string, nameIn: s
   }
 }
 
-// ---------- import a single .jar ----------
+// ---------- import a server from a .jar (copies its whole folder) ----------
 const ZIP_MAGIC = [0x50, 0x4b, 0x03, 0x04];
 
-export async function importJar(ctx: EngineCtx, input: ImportJarInput): Promise<ServerConfig> {
-  const { store, deps } = ctx;
-  if (typeof input !== 'object' || input === null) throw new AppException('INVALID_INPUT');
-  const name = validateName(input.name);
-  const description = validateDescription(input.description);
-  if (!isServerSoftware(input.software)) throw new AppException('INVALID_INPUT', 'Unknown software');
-  const software = input.software;
-  const velocity = software === 'velocity';
-  const src = input.jarPath;
+/** Checks the picked file is an absolute path to a real .jar (zip magic) and returns it. */
+async function assertJarFile(src: unknown): Promise<string> {
   if (typeof src !== 'string' || !path.isAbsolute(src) || !/\.jar$/i.test(src)) throw new AppException('INVALID_INPUT', 'A valid .jar file is required');
   const head = Buffer.alloc(4);
   try {
@@ -274,36 +267,112 @@ export async function importJar(ctx: EngineCtx, input: ImportJarInput): Promise<
     } finally { await handle.close(); }
   } catch (e) { throw e instanceof AppException ? e : new AppException('NOT_FOUND', 'Jar file not found'); }
   if (!ZIP_MAGIC.every((b, i) => head[i] === b)) throw new AppException('INVALID_INPUT', 'This file is not a valid .jar');
+  return src;
+}
+
+/** Reads <folder>/.mcmanager/config.json when it exists and is a JSON object. */
+async function readMetaConfig(folder: string): Promise<Record<string, unknown> | null> {
+  const text = await readTextIfExists(path.join(folder, SERVER_META_DIR, 'config.json'));
+  if (text === null) return null;
+  try {
+    const raw: unknown = JSON.parse(text);
+    return isRecord(raw) ? raw : null;
+  } catch { return null; }
+}
+
+/** Total size (MB) of what would be copied from a folder; symlinks are not followed. */
+async function copySizeMb(root: string): Promise<number> {
+  const keep = copyFilter(root);
+  let bytes = 0;
+  const walk = async (dir: string): Promise<void> => {
+    let entries: import('fs').Dirent[];
+    try { entries = await fs.readdir(dir, { withFileTypes: true }); } catch { return; }
+    for (const e of entries) {
+      const full = path.join(dir, e.name);
+      if (!keep(full)) continue;
+      if (e.isDirectory()) await walk(full);
+      else if (e.isFile()) bytes += (await fs.stat(full).catch(() => null))?.size ?? 0;
+    }
+  };
+  await walk(root);
+  return bytes / (1024 * 1024);
+}
+
+/** What the import dialog can pre-fill. complete = nothing more to ask the user (name + software + version known). */
+export async function inspectImport(_ctx: EngineCtx, jarPath: string): Promise<ImportPrefill> {
+  const src = await assertJarFile(jarPath);
+  const folderPath = path.dirname(src);
+  const [raw, sizeMb] = await Promise.all([readMetaConfig(folderPath), copySizeMb(folderPath)]);
+  if (raw === null) return { name: null, description: null, software: null, mcVersion: null, build: null, complete: false, folderPath, sizeMb };
+  const name = typeof raw.name === 'string' && raw.name.trim() !== '' ? raw.name : null;
+  const description = typeof raw.description === 'string' ? raw.description : null;
+  const software = isServerSoftware(raw.software) ? raw.software : null;
+  const mcVersion = normOptional(raw.mcVersion);
+  const build = normOptional(raw.build);
+  const complete = name !== null && software !== null && (software === 'custom' || mcVersion !== null);
+  return { name, description, software, mcVersion, build, complete, folderPath, sizeMb };
+}
+
+export async function importJar(ctx: EngineCtx, input: ImportJarInput): Promise<ServerConfig> {
+  const { store, deps } = ctx;
+  if (typeof input !== 'object' || input === null) throw new AppException('INVALID_INPUT');
+  const name = validateName(input.name);
+  const description = validateDescription(input.description);
+  if (!isServerSoftware(input.software)) throw new AppException('INVALID_INPUT', 'Unknown software');
+  const software = input.software;
+  const velocity = software === 'velocity';
+  const src = await assertJarFile(input.jarPath);
+
+  // The server = the folder that holds the jar. Never import a folder that contains (or is) the servers folder or a drive root.
+  const srcDir = path.dirname(await fs.realpath(src));
+  const serversReal = await fs.realpath(store.serversDir).catch(() => store.serversDir);
+  if (srcDir === path.parse(srcDir).root || srcDir === serversReal || isInside(srcDir, serversReal)) {
+    throw new AppException('INVALID_INPUT', 'This jar is in a folder that cannot be imported as a server');
+  }
+  const jarFile = path.basename(src);
+  const raw = await readMetaConfig(srcDir);
 
   const mcVersion = normOptional(input.mcVersion);
   const build = normOptional(input.build);
-  const major = mcVersion === null ? 21 : await deps.content.getDefaultJava(mcVersion);
-  const ramMb = Math.max(512, Math.min(DEFAULT_RAM_MB, Math.floor(totalRamMb() / 2)));
-  const port = await suggestPort(store.all(), defaultPortFor(software));
-
   const id = store.newId(name);
   const folder = store.folderOf(id);
   try {
-    await fs.mkdir(folder, { recursive: true });
-    const baseName = path.basename(src);
-    const jarFile = software === 'custom' ? baseName : 'server.jar';
-    await fs.copyFile(src, path.join(folder, jarFile));
-    if (!velocity) {
-      const motdLine = description === '' ? '' : `motd=${encodeMotd(description)}\n`;
-      await fs.writeFile(path.join(folder, 'server.properties'), `server-port=${port}\n${motdLine}`);
-    }
+    await fs.cp(srcDir, folder, { recursive: true, filter: copyFilter(srcDir) });
+    const base = raw ? normalizeConfig(raw, id, folder) : null;
+    const baseSettings = raw && isRecord(raw.settings) ? base?.settings ?? null : null;
+
+    const text = velocity ? null : await readTextIfExists(path.join(folder, 'server.properties'));
+    const fromFile = text === null ? NaN : Number.parseInt(parseProperties(text)['server-port'] ?? '', 10);
+    const wanted = baseSettings?.port ?? fromFile;
+    const port = Number.isInteger(wanted) && wanted >= 1024 && wanted <= 65535 && !usedByApp(store.all(), wanted)
+      ? wanted
+      : await suggestPort(store.all(), defaultPortFor(software));
+
+    const javaMajorOverride = baseSettings?.javaMajorOverride ?? (mcVersion === null ? 21 : null);
+    const major = javaMajorOverride ?? (mcVersion === null ? 21 : await deps.content.getDefaultJava(mcVersion));
+    const ramMb = baseSettings?.ramMb ?? Math.max(512, Math.min(DEFAULT_RAM_MB, Math.floor(totalRamMb() / 2)));
+    const flags = base && raw && isRecord(raw.start) && base.start.flags.length > 0 ? base.start.flags : suggestFlags(ramMb, major);
     const cfg: ServerConfig = {
       id, name, description, software, modKind: MOD_KIND_BY_SOFTWARE[software], mcVersion, build,
       customJarName: software === 'custom' ? jarFile.replace(/\.jar$/i, '') : null,
       folder, createdAt: Date.now(),
-      settings: { ramMb, storageLimitMb: null, autoStart: false, autoRestartOnCrash: false, port, javaMajorOverride: mcVersion === null ? 21 : null, customIpHost: null },
-      start: { jarFile, flags: suggestFlags(ramMb, major) },
+      settings: {
+        ramMb, storageLimitMb: baseSettings ? baseSettings.storageLimitMb : null,
+        autoStart: baseSettings?.autoStart ?? false, autoRestartOnCrash: baseSettings?.autoRestartOnCrash ?? false,
+        port, javaMajorOverride, customIpHost: baseSettings?.customIpHost ?? null,
+      },
+      start: { jarFile, flags },
     };
     await store.save(cfg);
+    if (velocity) await syncPortToFiles(folder, port, true);
+    else if (text === null) {
+      const motdLine = description === '' ? '' : `motd=${encodeMotd(description)}\n`;
+      await fs.writeFile(path.join(folder, 'server.properties'), `server-port=${port}\n${motdLine}`);
+    } else await syncPortToFiles(folder, port, false);
     deps.emit('servers:changed', null);
     return clone(cfg);
   } catch (e) {
-    await rmWithRetry(folder).catch((err) => deps.log.error('cleanup after failed jar import', err));
+    await rmWithRetry(folder).catch((err) => deps.log.error('cleanup after failed server import', err));
     throw toAppException(e);
   }
 }
