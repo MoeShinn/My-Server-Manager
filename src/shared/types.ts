@@ -16,7 +16,7 @@ export interface CreateServerInput { name: string; description?: string; softwar
 export interface ImportJarInput { jarPath: string; name: string; description: string | null; software: ServerSoftware; mcVersion: string | null; build: string | null; }
 export interface ServerInfoPatch { name: string; description: string; }
 export interface ConsoleLine { ts: number; level: 'info' | 'warn' | 'error' | 'command' | 'system'; text: string; textKey?: string; params?: Record<string, string | number>; }
-export interface ServerStats { cpuPercent: number; ramUsedMb: number; diskUsedMb: number; uptimeSec: number; }
+export interface ServerStats { cpuPercent: number; ramUsedMb: number; diskUsedMb: number; uptimeSec: number; /** Ticks per second (0-20). null = unknown / not supported by this server software. */ tps: number | null; }
 export interface PlayerEntry { name: string; uuid: string | null; online: boolean; }
 export interface SystemInfo { totalRamMb: number; freeRamMb: number; cpuCores: number; freeDiskMb: number; localIps: string[]; }
 export interface VersionEntry { mcVersion: string; build: string | null; group: string; stable: boolean; } // group = major line like '1.21'

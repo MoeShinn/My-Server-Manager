@@ -15,12 +15,12 @@ interface Props {
 
 const WARN_STYLE = { ['--accent' as string]: 'var(--warning)' } as CSSProperties;
 
-function Row({ label, value, children }: { label: string; value: string; children?: React.ReactNode }): JSX.Element {
+function Row({ label, value, valueStyle, children }: { label: string; value: string; valueStyle?: CSSProperties; children?: React.ReactNode }): JSX.Element {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 13 }}>
         <span style={{ color: 'var(--muted)' }}>{label}</span>
-        <span>{value}</span>
+        <span style={valueStyle}>{value}</span>
       </div>
       {children}
     </div>
@@ -33,6 +33,11 @@ export default function StatsBox({ config, status, stats, onlineCount, maxPlayer
   const ramUsed = running && stats ? stats.ramUsedMb : 0;
   const cpu = running && stats ? stats.cpuPercent : 0;
   const disk = stats ? stats.diskUsedMb : 0;
+  // TPS: 20 = perfect. Only meaningful while the server is fully running and the software reports it.
+  const tps = status === 'running' && stats ? stats.tps ?? null : null;
+  const tpsText = tps === null ? '—' : `${tps.toFixed(1)} / 20`;
+  const tpsStyle: CSSProperties | undefined =
+    tps === null ? undefined : { color: tps >= 18 ? 'var(--success)' : tps >= 15 ? 'var(--warning)' : 'var(--danger)' };
   const ramMax = config.settings.ramMb;
   const limit = config.settings.storageLimitMb;
 
@@ -47,6 +52,7 @@ export default function StatsBox({ config, status, stats, onlineCount, maxPlayer
           <ProgressBar value={ramPct} />
         </Row>
         <Row label={t('srv.dash.cpu')} value={`${cpu.toFixed(1)}%`} />
+        <Row label="TPS" value={tpsText} valueStyle={tpsStyle} />
         <Row
           label={t('srv.dash.storage')}
           value={`${formatMb(disk)} / ${limit === null ? t('srv.dash.unlimited') : formatMb(limit)}`}

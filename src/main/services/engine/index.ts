@@ -30,6 +30,8 @@ export function createEngineService(deps: ServiceDeps & { content: ContentServic
     getActive: () => pm.activeProcesses(),
     getFolder: (id) => store.find(id)?.folder ?? null,
     getLimitMb: (id) => store.find(id)?.settings.storageLimitMb ?? null,
+    probeTps: (id) => pm.probeTps(id),
+    getTps: (id) => pm.peek(id)?.tps ?? null,
     onStorage: (id, used, limit) => pm.handleStorage(id, used, limit),
   });
   const pm: ProcessManager = new ProcessManager({ deps, store, disk, onActivity: () => stats.ensureRunning() });
@@ -219,6 +221,7 @@ export function createEngineService(deps: ServiceDeps & { content: ContentServic
         ramUsedMb: alive ? last.ramUsedMb : 0,
         diskUsedMb,
         uptimeSec: alive && rt?.startedAt ? Math.floor((Date.now() - rt.startedAt) / 1000) : 0,
+        tps: alive ? (rt?.tps ?? null) : null,
       };
     },
 

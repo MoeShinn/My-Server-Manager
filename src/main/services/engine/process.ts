@@ -16,6 +16,7 @@ import { canBind } from './ports';
 import { readMaxPlayers, syncPortToFiles } from './properties';
 import { isJavaProcess, isPidAlive, killTree, readRunFile, removeRunFile, writeRunFile } from './proc';
 import type { RunInfo } from './proc';
+import { handleTpsLine, tpsCommand, TPS_PROBE_WINDOW_MS } from './tps';
 import type { ActiveServer, DiskUsageCache } from './stats';
 import type { ServerStore } from './store';
 import { pathExists, readTextIfExists, sleep, toAppException } from './util';
@@ -51,6 +52,9 @@ export interface Runtime {
   tailTimer: NodeJS.Timeout | null;
   watchTimer: NodeJS.Timeout | null;
   finalized: boolean;
+  tps: number | null;
+  tpsProbeUntil: number;
+  tpsUnsupported: boolean;
 }
 
 function createRuntime(id: string): Runtime {
@@ -59,6 +63,7 @@ function createRuntime(id: string): Runtime {
     console: new ConsoleBuffer(CONSOLE_MAX_LINES), online: [], maxPlayers: 20, lineQueue: Promise.resolve(),
     stdout: new LineSplitter(), stderr: new LineSplitter(), stopTimer: null, forceTimer: null, restartTimer: null,
     restartHistory: [], storageWarned: false, storageExceeded: false, tailTimer: null, watchTimer: null, finalized: true,
+    tps: null, tpsProbeUntil: 0, tpsUnsupported: false,
   };
 }
 
@@ -172,6 +177,7 @@ export class ProcessManager {
   private processLine(rt: Runtime, raw: string): void {
     const text = stripAnsi(raw).replace(/\r$/, '');
     if (text.trim() === '') return;
+    if (handleTpsLine(rt, text)) return; // answer to our own hidden TPS query: keep it out of the console
     this.pushLine(rt, { ts: Date.now(), level: detectLevel(text), text });
     if (rt.status === 'starting' && /\bDone \(/.test(text)) this.setStatus(rt, 'running');
     const ev = parsePlayerEvent(text);
@@ -189,6 +195,17 @@ export class ProcessManager {
   async getPlayers(id: string): Promise<PlayerEntry[]> {
     const cfg = this.d.store.require(id);
     return mergePlayers(await readUserCache(cfg.folder), this.rt(id).online);
+  }
+
+  /** Silently asks a running server for its TPS. The reply is parsed (and hidden) in processLine. */
+  probeTps(id: string): void {
+    const rt = this.peek(id);
+    const cfg = this.d.store.find(id);
+    if (!rt || !cfg || rt.status !== 'running' || rt.adopted || !rt.child || rt.tpsUnsupported) return;
+    const cmd = tpsCommand(cfg.software);
+    if (!cmd || !rt.child.stdin.writable) return;
+    rt.tpsProbeUntil = Date.now() + TPS_PROBE_WINDOW_MS;
+    rt.child.stdin.write(`${cmd}\n`);
   }
 
   // ---------- start ----------
@@ -251,6 +268,9 @@ export class ProcessManager {
     rt.stderr = new LineSplitter();
     rt.storageWarned = false;
     rt.storageExceeded = false;
+    rt.tps = null;
+    rt.tpsProbeUntil = 0;
+    rt.tpsUnsupported = false;
     this.setStatus(rt, 'starting');
     this.addSystem(rt, 'engine.started', { name: stripMcColors(cfg.name), ram: cfg.settings.ramMb, port: cfg.settings.port });
     this.emitPlayers(rt);

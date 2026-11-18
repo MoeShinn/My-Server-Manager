@@ -65,6 +65,9 @@ export interface StatsDeps {
   getActive(): ActiveServer[];
   getFolder(id: string): string | null;
   getLimitMb(id: string): number | null;
+  /** Asks the server for its TPS (answer arrives later through getTps). */
+  probeTps(id: string): void;
+  getTps(id: string): number | null;
   onStorage(id: string, usedMb: number, limitMb: number): void;
 }
 
@@ -98,6 +101,7 @@ export class StatsMonitor {
       for (const s of active) {
         const folder = this.d.getFolder(s.id);
         if (!folder) continue;
+        this.d.probeTps(s.id);
         let cpuPercent = 0;
         let ramUsedMb = 0;
         try {
@@ -110,7 +114,7 @@ export class StatsMonitor {
         const diskUsedMb = this.d.disk.get(s.id) ?? 0;
         this.d.emit('server:stats', {
           id: s.id,
-          stats: { cpuPercent, ramUsedMb, diskUsedMb, uptimeSec: Math.floor((Date.now() - s.startedAt) / 1000) },
+          stats: { cpuPercent, ramUsedMb, diskUsedMb, uptimeSec: Math.floor((Date.now() - s.startedAt) / 1000), tps: this.d.getTps(s.id) },
         });
         const limit = this.d.getLimitMb(s.id);
         if (limit !== null) this.d.onStorage(s.id, diskUsedMb, limit);

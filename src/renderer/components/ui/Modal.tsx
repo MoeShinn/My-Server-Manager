@@ -20,20 +20,30 @@ export interface ModalProps {
 export function Modal({ open, title, onClose, footer, width = 480, dismissible = true, className, children }: ModalProps): JSX.Element | null {
   const t = useT()
   const panelRef = useRef<HTMLDivElement>(null)
+  // Keep the latest onClose in a ref: callers usually pass an inline arrow, which is a new function on every render.
+  // If onClose were an effect dependency, the effect would re-run on every re-render (e.g. the stats updates every
+  // few seconds) and steal focus from the text box the user is typing in.
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
 
+  // Focus the dialog only when it opens, and never take focus away from an input that already has it (autoFocus).
   useEffect(() => {
     if (!open) return
-    panelRef.current?.focus()
-    if (!dismissible) return
+    const panel = panelRef.current
+    if (panel && !panel.contains(document.activeElement)) panel.focus()
+  }, [open])
+
+  useEffect(() => {
+    if (!open || !dismissible) return
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') {
         e.stopPropagation()
-        onClose()
+        onCloseRef.current()
       }
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [open, dismissible, onClose])
+  }, [open, dismissible])
 
   if (!open) return null
   return createPortal(
