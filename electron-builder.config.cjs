@@ -38,7 +38,7 @@ module.exports = {
   appId,
   productName,
   artifactName: '${name}-Setup-${version}.${ext}',
-  extraMetadata: { version: appVersion },
+  extraMetadata: { version: appVersion, desktopName: 'mc-server-manager.desktop' },
   directories: { output: 'dist' },
   asar: true,
   files: ['out/**/*', 'package.json'],
@@ -51,7 +51,16 @@ module.exports = {
   ],
   win: {
     target: [{ target: 'nsis', arch: ['x64'] }],
-    icon: appIcon
+    icon: appIcon,
+    artifactName: '${name}-Setup-${version}.${ext}'
+  },
+  linux: {
+    target: [{ target: 'AppImage', arch: ['x64'] }],
+    icon: appIcon,
+    category: 'Utility',
+    syncDesktopName: true,
+    executableName: 'mc-server-manager',
+    artifactName: '${name}-${version}-linux-x64.${ext}'
   },
   nsis: {
     oneClick: false,

@@ -1,6 +1,6 @@
 # Privacy Policy / Chính sách riêng tư
 
-Last updated / Cập nhật lần cuối: <DATE>
+Last updated / Cập nhật lần cuối: 2026-11-18
 
 This app is not an official Minecraft product. It is not approved by or associated with Mojang or Microsoft.
 Ứng dụng này không phải sản phẩm chính thức của Minecraft, không được Mojang hay Microsoft phê duyệt hay liên kết.
@@ -39,8 +39,7 @@ Before a server can run, you must accept the Minecraft EULA. The app opens the E
 Everything stays on your computer. Uninstalling the app does not delete your servers unless you tick the option to delete all data.
 
 ### Contact
-CONTACT: Moe Shinn, vtubershinju@gmail.com 
- or GitHub.com/MoeShinn
+<CONTACT: name, email or GitHub page>
 
 ---
 
@@ -76,4 +75,4 @@ Server chỉ chạy được sau khi bạn chấp nhận Minecraft EULA. Ứng d
 Mọi thứ nằm trên máy của bạn. Gỡ cài đặt ứng dụng không xóa server của bạn, trừ khi bạn tích chọn xóa toàn bộ dữ liệu.
 
 ### Liên hệ
-LIÊN HỆ: MoeShinn, vtubershinju@gmail.com hoặc [t.me/MoeShinnCh](https://t.me/moeshinnch)
+<LIÊN HỆ: tên, email hoặc trang GitHub>

@@ -1,104 +1,146 @@
+<div align="center">
+
+<img src="assets/icon.png" alt="My Server Manager" width="120">
+
 # My Server Manager
 
-Ứng dụng desktop (Windows trước, Linux làm sau) giúp người không rành dòng lệnh tạo và quản lí **nhiều server Minecraft Java** ngay trên máy: tự tải server jar (Vanilla, Paper, Purpur, Folia, Leaf, Fabric, Velocity hoặc jar tự chọn), tự tải đúng bản Java cho từng server, chạy/dừng, console realtime, quản lí plugin/mod (Modrinth), quản lí tệp, địa chỉ IP/playit.gg. Không tài khoản, không thu thập dữ liệu.
+**Tạo và quản lí nhiều server Minecraft Java ngay trên máy của bạn, không cần dùng dòng lệnh.**
+
+[![Release](https://img.shields.io/github/v/release/MoeShinn/My-Server-Manager?style=flat-square)](https://github.com/MoeShinn/My-Server-Manager/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/MoeShinn/My-Server-Manager/total?style=flat-square)](https://github.com/MoeShinn/My-Server-Manager/releases)
+[![License](https://img.shields.io/github/license/MoeShinn/My-Server-Manager?style=flat-square)](legal/LICENSE)
+![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-informational?style=flat-square)
+
+[Tải về](https://github.com/MoeShinn/My-Server-Manager/releases/latest) · [Báo lỗi](https://github.com/MoeShinn/My-Server-Manager/issues/new/choose) · [Đóng góp](CONTRIBUTING.md)
+
+</div>
 
 > Đây không phải sản phẩm chính thức của Minecraft. Ứng dụng không được Mojang hay Microsoft phê duyệt hay liên kết.
 
-<a href="https://moeshinn.github.io/donate/"><img src="https://moeshinn.github.io/image/9sjqqzqk.png" alt="buy me a coffee" width="40%"></a>
+## Tính năng
 
-## Cấu trúc thư mục
+- **Tạo server nhanh:** Vanilla, Paper, Purpur, Folia, Leaf, Fabric, Velocity hoặc jar tự chọn.
+- **Tự tải mọi thứ cần thiết:** server jar và đúng bản Java cho từng server, bạn không phải cài Java.
+- **Điều khiển và theo dõi:** chạy, dừng, khởi động lại, console realtime có gợi ý lệnh, Dashboard cho nhiều server.
+- **Plugin và mod:** tìm, cài và gỡ từ Modrinth.
+- **Quản lí tệp:** duyệt, đổi tên hàng loạt, di chuyển, xóa, sửa tệp bằng trình sửa tích hợp.
+- **Cho bạn bè vào chơi:** hướng dẫn IP tùy chỉnh và playit.gg.
+- **Chạy ổn định:** thu xuống khay hệ thống, tự khởi động server, tự khởi động lại khi crash, thoát an toàn (dừng từng server trước khi tắt app).
+- **Đa ngôn ngữ:** tiếng Anh, tiếng Việt, song ngữ Việt-Anh; thêm ngôn ngữ mới chỉ bằng một tệp JSON.
+- **Riêng tư:** không tài khoản, không thu thập dữ liệu.
+
+## Cài đặt
+
+Tải bản mới nhất ở trang [Releases](https://github.com/MoeShinn/My-Server-Manager/releases/latest).
+
+| Hệ điều hành | Tệp | Ghi chú |
+|---|---|---|
+| Windows 10/11 (64-bit) | `mc-server-manager-Setup-<phiên bản>.exe` | Chạy tệp và làm theo hướng dẫn. |
+| Linux (64-bit) | `mc-server-manager-<phiên bản>-linux-x64.AppImage` | Thử nghiệm. `chmod +x` rồi chạy tệp. |
+
+Bản Windows chưa kí số, nên SmartScreen có thể cảnh báo "Unknown publisher". Bấm **More info** rồi **Run anyway**.
+
+App tự kiểm tra cập nhật (có thể tắt trong **Cài đặt**).
+
+## Dành cho nhà phát triển
+
+Công nghệ: Electron, TypeScript, React, Tailwind, electron-vite. Cần Node 20 trở lên.
+
+```bash
+npm install
+npm run dev          # chạy chế độ phát triển (Windows: run-dev.bat)
+npm run typecheck    # kiểm tra kiểu
+npm run build        # build mã nguồn vào thư mục out/
+```
+
+Tạo bản cài trên máy của bạn:
+
+```bash
+# Windows
+build-setup.bat
+
+# Linux
+npm run prepare-build && npm run build
+npx electron-builder --config electron-builder.config.cjs --linux --publish never
+```
+
+Nếu `npm run build` báo "heap out of memory", đặt `NODE_OPTIONS=--max-old-space-size=6144` trước khi chạy (các tệp `.bat` đã làm sẵn).
+
+### Cấu trúc thư mục
 
 ```
 config.toml        Cấu hình app (tên, phiên bản, kho GitHub, cửa sổ, liên kết pháp lí...)
 data.json          Dữ liệu từ xa: mốc Java, liên kết tải Java, loader plugin, danh sách ngôn ngữ
-assets/            Icon (icon.png, icon.svg)
-language/          File ngôn ngữ đóng gói sẵn: en.json, vi.json, vi-en.json
-locales-src/       Chữ tiếng Anh gốc của từng phần (p1.en.json ... p5.en.json)
+assets/            Icon
+language/          Tệp ngôn ngữ đóng gói sẵn: en.json, vi.json, vi-en.json
+locales-src/       Chữ tiếng Anh gốc (app.en.json), gộp thành language/en.json
 legal/             LICENSE, PRIVACY.md, THIRD_PARTY_NOTICES.md
 tools/             build-language.mjs, make-icon.mjs, glossary.md
-docs/              PART-<n>-STATUS.md (ghi chú bàn giao từng phần)
-src/main/          Tiến trình chính (Electron): engine, content, files, language, app
+scripts/           prepare-build.mjs (đồng bộ version, kiểm tra icon)
+src/main/          Tiến trình chính Electron: engine, content, files, language, app
 src/preload/       Cầu nối an toàn giữa main và renderer
 src/renderer/      Giao diện React
-src/shared/        Kiểu dữ liệu và hợp đồng dùng chung
+src/shared/        Kiểu dữ liệu và hợp đồng IPC dùng chung
+.github/           Workflow build/phát hành, mẫu issue và pull request
 ```
 
-## Chạy thử (dev)
+### Cấu hình (`config.toml`)
 
-Cần Node 20 trở lên.
+Mỗi key có chú thích ngay phía trên. Các key chính:
 
-```
-npm install
-run-dev.bat
-```
+- `app_name`, `app_id` (không đổi sau khi phát hành), `user_agent` (nên ghi kèm tên GitHub vì PaperMC và Modrinth yêu cầu).
+- `app_repo`: kho chứa bản phát hành, dùng cho tính năng cập nhật.
+- `data_repo`, `data_branch`: nơi app đọc `data.json` và ngôn ngữ tải thêm.
+- `app_version`: **nơi duy nhất** đổi phiên bản, lúc build tự đồng bộ vào `package.json`.
+- `installer_icon`: icon `.ico` cho trình cài đặt.
 
-(`run-dev.bat` và `build-setup.bat` do phần P3 cung cấp.)
+### Phát hành phiên bản mới
 
-## Icon
+1. Sửa `app_version` trong `config.toml` (ví dụ `1.0.1`) rồi đẩy lên nhánh `main`.
+2. Workflow **Release** tự chạy: so với commit trước, nếu version đổi thì build bản Windows (NSIS) và Linux (AppImage) trên GitHub Actions.
+3. Workflow tạo release `v<phiên bản>` kèm tệp cài đặt và các tệp `latest.yml`, `latest-linux.yml`, `.blockmap` (cơ chế tự cập nhật của app đọc các tệp này). Nếu release cùng tag đã tồn tại, nó bị **xóa và tạo lại**.
+4. Muốn build lại đúng phiên bản hiện tại: vào tab **Actions**, chọn **Release**, bấm **Run workflow** và tích `force`.
 
-Tạo icon tạm (hình khối lập phương xanh lá, không cần thư viện ngoài):
+Nội dung mô tả release lấy từ [`.github/release-notes.md`](.github/release-notes.md) (`{{VERSION}}` và `{{REPO}}` được thay tự động).
 
-```
-node tools/make-icon.mjs
-```
+### Kho dữ liệu (data repo)
 
-Nếu `assets/icon.png` đã có thì lệnh sẽ KHÔNG ghi đè. Thêm `--force` để ghi đè. Khi có logo riêng, chỉ cần thay `assets/icon.png` (PNG vuông, từ 256x256 trở lên) và `assets/icon.svg`.
+App đọc `https://raw.githubusercontent.com/{data_repo}/{data_branch}/data.json` và ngôn ngữ ở `.../language/{mã}.json`. `data_repo` có thể trùng kho của app. Kho phải **công khai**, `data.json` và thư mục `language/` nằm ở **gốc** kho.
 
-## Build bản cài
+### Thêm ngôn ngữ
 
-```
-build-setup.bat
-```
-
-Bản cài dùng NSIS, cài theo từng người dùng, `appId` lấy từ `config.toml`.
-
-## Chỉnh config.toml
-
-Mỗi key có chú thích tiếng Việt ngay phía trên. Những chỗ cần sửa trước khi phát hành:
-
-- `app_name`, `app_id` (không đổi sau khi phát hành), `app_repo`, `data_repo`.
-- `app_version` là nơi DUY NHẤT đổi phiên bản, lúc build sẽ đồng bộ vào `package.json`.
-- `user_agent`: nên ghi kèm tên GitHub của bạn để liên hệ, vì PaperMC và Modrinth yêu cầu.
-- `privacy_policy_url`, `license_url`: điền địa chỉ https thật, để rỗng thì nút tương ứng trong Cài đặt bị vô hiệu.
-
-## Dựng kho dữ liệu (data repo)
-
-1. Tạo một kho GitHub công khai (có thể trùng kho của app).
-2. Đặt `data.json` và thư mục `language/` ở **gốc** kho.
-3. Điền `data_repo` (dạng `chủ/kho`) và `data_branch` trong `config.toml`.
-
-App đọc dữ liệu tại `https://raw.githubusercontent.com/{data_repo}/{data_branch}/data.json` và ngôn ngữ tại `.../{data_branch}/language/{mã}.json`.
-
-## Thêm ngôn ngữ mới
-
-1. Tạo `language/<mã>.json` (mã dạng `vi`, `pt-br`...). File có `_meta` gồm `code` và `name`.
-2. Thêm một dòng vào mảng `languages` của `data.json`:
+1. Tạo `language/<mã>.json` (mã dạng `vi`, `pt-br`...), có `_meta` gồm `code` và `name`.
+2. Thêm vào mảng `languages` của `data.json`:
    `{ "code": "fr", "name": "Français", "file": "language/fr.json" }`
-3. Đẩy lên kho dữ liệu. Người dùng sẽ thấy ngôn ngữ trong Cài đặt, mục "Tải thêm ngôn ngữ".
+3. Đẩy lên kho dữ liệu. Người dùng thấy ngôn ngữ trong Cài đặt, mục "Tải thêm ngôn ngữ".
 
-## Dùng tools/build-language.mjs
-
-Công cụ không cần thư viện ngoài. Xem hướng dẫn: `node tools/build-language.mjs --help`.
+Công cụ `tools/build-language.mjs` (không cần thư viện ngoài, xem `--help`):
 
 | Lệnh | Việc làm |
 |---|---|
-| `node tools/build-language.mjs` | Gộp mọi `locales-src/*.en.json` thành `language/en.json`. Báo lỗi nếu một key trùng nhưng khác nội dung. |
-| `... --missing vi --chunk 80` | Liệt kê key còn thiếu của `vi` ra `tools/missing-vi-1.json`... (mỗi file tối đa 80 key) để đem đi dịch. |
-| `... --merge vi tools/missing-vi-1.json --name "Tiếng Việt"` | Gộp bản dịch vào `language/vi.json`. Kiểm tra mỗi key giữ nguyên tham số `{...}`. |
-| `... --check` | Kiểm tra mọi file trong `language/`: tham số, số key thiếu, số key thừa. |
+| `node tools/build-language.mjs` | Gộp `locales-src/*.en.json` thành `language/en.json`; báo lỗi nếu một key trùng nhưng khác nội dung. |
+| `... --missing vi --chunk 80` | Liệt kê key còn thiếu của `vi` ra `tools/missing-vi-1.json`... để đem đi dịch. |
+| `... --merge vi tools/missing-vi-1.json --name "Tiếng Việt"` | Gộp bản dịch vào `language/vi.json`, kiểm tra giữ nguyên tham số `{...}`. |
+| `... --check` | Kiểm tra mọi tệp trong `language/`: tham số, key thiếu, key thừa. |
 
-Khi dịch, dùng `tools/glossary.md` để thuật ngữ nhất quán giữa `vi` và `vi-en`.
+Khi dịch, dùng `tools/glossary.md` để thuật ngữ nhất quán.
 
-## Việc cần kiểm tra trước khi phát hành
+## Hạn chế đã biết
 
-- [ ] **Liên kết Java chưa được kiểm chứng.** Các địa chỉ trong `javaDownloads` của `data.json` được dựng theo mẫu API của Eclipse Adoptium
-  (`https://api.adoptium.net/v3/binary/latest/<bản>/ga/<hệ điều hành>/x64/jre/hotspot/normal/eclipse`) nhưng chưa được mở thử. Hãy tải thử từng liên kết, nhất là Java 16 (đã hết hỗ trợ, có thể không còn JRE) và Java 25. Nếu bản nào không có JRE thì đổi `jre` thành `jdk`.
-- [ ] **Điền sha256.** Mọi mục Java đang để `"sha256": null`. Khi biết mã băm (Adoptium công bố kèm mỗi bản), điền vào để app kiểm tra tính toàn vẹn khi tải.
-- [ ] **Java 7** không có mục tải nào (chưa có liên kết chắc chắn). Server rất cũ cần Java 7 sẽ phải tự cung cấp.
-- [ ] **Giấy phép:** `legal/LICENSE` là MIT với chỗ trống `<YEAR>` và `<OWNER>`. Hãy điền, hoặc đổi sang giấy phép bạn muốn.
-- [ ] **Liên hệ trong `legal/PRIVACY.md`:** điền `<DATE>` và `<CONTACT>`/`<LIÊN HỆ>`.
-- [ ] **`legal/THIRD_PARTY_NOTICES.md`:** chạy `npx license-checker --production --summary` và bổ sung nếu cần.
-- [ ] **URL trong `config.toml`:** `app_repo`, `data_repo`, `privacy_policy_url`, `license_url`.
-- [ ] **Thay icon tạm** bằng logo của bạn.
+- Bản Linux còn thử nghiệm, chưa được kiểm tra kĩ như bản Windows.
+- Bản cài Windows chưa kí số nên có cảnh báo SmartScreen.
+- Liên kết tải Java trong `data.json` dựng theo API của Eclipse Adoptium. Java 16 (đã hết hỗ trợ) và Java 7 có thể không có sẵn; mã băm `sha256` chưa điền.
+
+## Đóng góp
+
+Xem [CONTRIBUTING.md](CONTRIBUTING.md). Báo lỗi hoặc đề xuất tính năng ở [Issues](https://github.com/MoeShinn/My-Server-Manager/issues/new/choose).
+
+## Ủng hộ
+
+<a href="https://moeshinn.github.io/donate/"><img src="https://moeshinn.github.io/image/9sjqqzqk.png" alt="buy me a coffee" width="40%"></a>
+
+## Giấy phép
+
+[MIT](legal/LICENSE). Chính sách riêng tư: [PRIVACY.md](legal/PRIVACY.md). Thành phần bên thứ ba: [THIRD_PARTY_NOTICES.md](legal/THIRD_PARTY_NOTICES.md).
 
 Minecraft là nhãn hiệu của Mojang AB / Microsoft. Đây không phải sản phẩm chính thức của Minecraft.
