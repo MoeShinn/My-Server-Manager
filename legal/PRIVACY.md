@@ -39,7 +39,8 @@ Before a server can run, you must accept the Minecraft EULA. The app opens the E
 Everything stays on your computer. Uninstalling the app does not delete your servers unless you tick the option to delete all data.
 
 ### Contact
-<CONTACT: name, email or GitHub page>
+<CONTACT: Moe Shinn,vtubershinju@gmail.com 
+ or GitHub.com/MoeShinn>
 
 ---
 
@@ -75,4 +76,4 @@ Server chỉ chạy được sau khi bạn chấp nhận Minecraft EULA. Ứng d
 Mọi thứ nằm trên máy của bạn. Gỡ cài đặt ứng dụng không xóa server của bạn, trừ khi bạn tích chọn xóa toàn bộ dữ liệu.
 
 ### Liên hệ
-<LIÊN HỆ: tên, email hoặc trang GitHub>
+<LIÊN HỆ: MoeShinn, vtubershinju@gmail.com hoặc t.me/moeshinn>
