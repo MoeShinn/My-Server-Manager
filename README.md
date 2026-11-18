@@ -4,6 +4,8 @@
 
 > Đây không phải sản phẩm chính thức của Minecraft. Ứng dụng không được Mojang hay Microsoft phê duyệt hay liên kết.
 
+<a href="https://moeshinn.github.io/donate/"><img src="https://moeshinn.github.io/image/9sjqqzqk.png" alt="buy me a coffee" width="40%"></a>
+
 ## Cấu trúc thư mục
 
 ```
