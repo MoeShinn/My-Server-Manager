@@ -22,7 +22,12 @@ const appVersion = str('app_version', '1.0.0')
 const rawRepo = str('app_repo', 'OWNER/REPO')
 const appRepo = rawRepo === 'OWNER/REPO' && process.env.GITHUB_REPOSITORY ? process.env.GITHUB_REPOSITORY : rawRepo
 const appIcon = str('app_icon', 'assets/icon.png')
-const installerIcon = str('installer_icon', '')
+let installerIcon = str('installer_icon', '')
+// Đường dẫn sai/không có file thì bỏ qua (dùng icon app) thay vì làm NSIS lỗi.
+if (installerIcon !== '' && !fs.existsSync(path.join(__dirname, installerIcon))) {
+  console.warn('[electron-builder] Khong thay installer_icon "' + installerIcon + '", dung app_icon thay the.')
+  installerIcon = ''
+}
 
 const repoMatch = /^([\w.-]+)\/([\w.-]+)$/.exec(appRepo)
 const publish =

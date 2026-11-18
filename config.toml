@@ -67,7 +67,7 @@ app_icon = "assets/icon.png"
 
 # Icon riêng cho trình cài đặt (.ico). Để rỗng thì dùng app_icon.
 # LƯU Ý: chỉ điền khi file đó thật sự tồn tại.
-installer_icon = "installer_icon.ico"
+installer_icon = "assets/installer_icon.ico"
 
 # ---------------- Mạng ----------------
 
