@@ -6,7 +6,8 @@
 - Tạo server chỉ vài cú bấm: Vanilla, Paper, Purpur, Folia, Leaf, Fabric, Velocity hoặc jar tự chọn
 - Tự tải server jar và đúng bản Java cho từng server
 - Chạy, dừng, khởi động lại; console realtime có gợi ý lệnh (Tab)
-- Quản lí nhiều server cùng lúc: Start all, Stop all, Dashboard theo dõi RAM và CPU
+- Quản lí nhiều server cùng lúc: Start all, Stop all, Dashboard theo dõi RAM và CPU (có biểu đồ đường, tùy chỉnh được giao diện)
+- Nhập server có sẵn: chuyển cả thư mục vào app, tự đọc `.mcmanager/config.json`
 - Cài và gỡ plugin/mod từ Modrinth
 - Quản lí tệp có trình sửa (Monaco), đổi tên hàng loạt
 - Hướng dẫn IP tùy chỉnh và playit.gg để bạn bè vào chơi
@@ -15,6 +16,13 @@
 - Tự kiểm tra và cập nhật phiên bản mới
 - Giao diện tiếng Anh và tiếng Việt
 - Không tài khoản, không thu thập dữ liệu
+
+### Có gì mới ở v{{VERSION}}
+- **Nhập máy chủ có sẵn**: nút "Import .jar" đổi thành **Nhập máy chủ**. App sao chép toàn bộ thư mục và tệp cùng thư mục với file `.jar` đã chọn, kèm hộp xác nhận hiện thư mục và dung lượng trước khi sao chép
+- Nếu thư mục có `.mcmanager/config.json`, app đọc tên, mô tả, phần mềm, phiên bản và các thiết lập (RAM, cờ JVM, cổng...) từ đó. Đủ thông tin thì nhập luôn, thiếu thì chỉ hỏi phần còn thiếu (đã điền sẵn những gì có, vẫn sửa được)
+- **Biểu đồ RAM và CPU** trong dashboard của từng server: biểu đồ đường 2 màu, di chuột để xem chi tiết từng thời điểm, lưu lịch sử tối đa 10 phút trong lúc app mở
+- **Tùy chỉnh giao diện dashboard server**: bố cục mặc định gồm 2 cột: bên trái là console kèm biểu đồ bên dưới, bên phải là các mục còn lại. Bạn có thể bật/tắt từng mục, đổi thứ tự, chuyển mục sang bên trái hoặc phải, chọn kích thước thẻ và khoảng thời gian của biểu đồ. Cài đặt được nhớ lại và áp dụng cho mọi server, có nút đặt lại mặc định
+- **Sửa lỗi**: đổi ngôn ngữ trong Cài đặt không cần tắt mở lại app nữa (trước đây app bị lặp vô hạn việc tải từ điển ngôn ngữ nên đổi xong không áp dụng được)
 
 ### Cài đặt
 
@@ -45,6 +53,8 @@ Mở [Issues](https://github.com/{{REPO}}/issues), ghi rõ hệ điều hành, p
 ## English
 
 Desktop app for creating and managing multiple Minecraft Java servers, no command line needed. Available for **Windows** and **Linux**.
+
+**What's new in v{{VERSION}}:** "Import .jar" is now **Import server**: it copies the whole folder next to the chosen `.jar` (with a confirmation showing the folder and its size) and reads `.mcmanager/config.json` to fill in the details, asking only for what is missing. New RAM and CPU line chart on each server's dashboard, plus a customizable two-column dashboard (console and chart on the left, other sections on the right; show/hide, reorder and move sections, card size, chart range). Fixed: changing the language now applies immediately without restarting the app.
 
 **Highlights:** one-click server creation (Vanilla, Paper, Purpur, Folia, Leaf, Fabric, Velocity, custom jar), automatic jar and Java download, live console, multi-server dashboard, Modrinth plugins/mods, file manager with editor, playit.gg guide, system tray, auto start, crash restart, safe sequential shutdown, automatic updates, English/Vietnamese UI. No account, no data collection.
 

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { AppConfig, AppSettings, ServerStatus, ServerSummary } from '@shared/types'
 import { api } from '@/api'
+import { startStatsHistory } from './statsHistory'
 
 interface SettingsState {
   settings: AppSettings | null
@@ -66,6 +67,7 @@ export function initStores(): () => void {
   void useSettingsStore.getState().load()
   void useServersStore.getState().load()
   const offs = [
+    startStatsHistory(),
     api.on('servers:changed', () => void useServersStore.getState().load()),
     api.on('server:status', (p) => useServersStore.getState().setStatus(p.id, p.status)),
     api.on('server:players', (p) => useServersStore.getState().setPlayers(p.id, p.online.length, p.max))

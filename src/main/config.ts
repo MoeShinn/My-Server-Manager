@@ -7,7 +7,7 @@ import type { Logger } from '@shared/ipc'
 export const DEFAULT_CONFIG: AppConfig = {
   appName: 'My Server Manager',
   appId: 'com.example.mcservermanager',
-  appVersion: '1.0.0',
+  appVersion: '1.0.1',
   appRepo: 'OWNER/REPO',
   dataRepo: 'OWNER/REPO',
   dataBranch: 'main',

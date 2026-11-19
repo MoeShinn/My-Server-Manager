@@ -35,6 +35,9 @@ export function getErrorParams(err: unknown): Record<string, string | number> | 
 const GROUPS = ['servers', 'content', 'files', 'language', 'app'] as const
 const bridge = window.mcmBridge
 
+/** Language methods that can change settings.language (e.g. removing the language in use). Read-only ones like getDictionary must NOT notify, or the dictionary reload loops forever. */
+const LANGUAGE_MUTATIONS: ReadonlySet<string> = new Set(['install', 'update', 'remove', 'installAll', 'updateAll', 'removeAll'])
+
 function notifySettingsChanged(): void {
   window.dispatchEvent(new CustomEvent('mcm:settings-changed'))
 }
@@ -45,7 +48,7 @@ async function call(group: string, method: string, args: unknown[]): Promise<unk
     throw Object.assign(new Error(res.error.message), { code: res.error.code, params: res.error.params })
   }
   // Settings may have changed (language service also writes settings.language in main).
-  if ((group === 'app' && (method === 'updateSettings' || method === 'resetSettings')) || group === 'language') {
+  if ((group === 'app' && (method === 'updateSettings' || method === 'resetSettings')) || (group === 'language' && LANGUAGE_MUTATIONS.has(method))) {
     notifySettingsChanged()
   }
   return res.value
