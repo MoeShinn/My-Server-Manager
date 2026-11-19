@@ -23,6 +23,8 @@
 - **Biểu đồ RAM và CPU** trong dashboard của từng server: biểu đồ đường 2 màu, di chuột để xem chi tiết từng thời điểm, lưu lịch sử tối đa 10 phút trong lúc app mở
 - **Tùy chỉnh giao diện dashboard server**: bố cục mặc định gồm 2 cột: bên trái là console kèm biểu đồ bên dưới, bên phải là các mục còn lại. Bạn có thể bật/tắt từng mục, đổi thứ tự, chuyển mục sang bên trái hoặc phải, chọn kích thước thẻ và khoảng thời gian của biểu đồ. Cài đặt được nhớ lại và áp dụng cho mọi server, có nút đặt lại mặc định
 - **Sửa lỗi**: đổi ngôn ngữ trong Cài đặt không cần tắt mở lại app nữa (trước đây app bị lặp vô hạn việc tải từ điển ngôn ngữ nên đổi xong không áp dụng được)
+- Hộp "Tải thêm ngôn ngữ" có nút **Làm mới danh sách** để tải lại danh sách ngôn ngữ từ GitHub (trước đó danh sách được lưu tạm tới 6 tiếng nên ngôn ngữ mới thêm không hiện ngay)
+- **Sửa lỗi**: tải được các ngôn ngữ có mã viết hoa như `zh-CN` (trước đây báo "thông tin chưa hợp lệ")
 
 ### Cài đặt
 
@@ -54,7 +56,7 @@ Mở [Issues](https://github.com/{{REPO}}/issues), ghi rõ hệ điều hành, p
 
 Desktop app for creating and managing multiple Minecraft Java servers, no command line needed. Available for **Windows** and **Linux**.
 
-**What's new in v{{VERSION}}:** "Import .jar" is now **Import server**: it copies the whole folder next to the chosen `.jar` (with a confirmation showing the folder and its size) and reads `.mcmanager/config.json` to fill in the details, asking only for what is missing. New RAM and CPU line chart on each server's dashboard, plus a customizable two-column dashboard (console and chart on the left, other sections on the right; show/hide, reorder and move sections, card size, chart range). Fixed: changing the language now applies immediately without restarting the app.
+**What's new in v{{VERSION}}:** "Import .jar" is now **Import server**: it copies the whole folder next to the chosen `.jar` (with a confirmation showing the folder and its size) and reads `.mcmanager/config.json` to fill in the details, asking only for what is missing. New RAM and CPU line chart on each server's dashboard, plus a customizable two-column dashboard (console and chart on the left, other sections on the right; show/hide, reorder and move sections, card size, chart range). Fixed: changing the language now applies immediately without restarting the app, and languages with uppercase codes such as zh-CN can be downloaded. The language download window also has a Refresh list button.
 
 **Highlights:** one-click server creation (Vanilla, Paper, Purpur, Folia, Leaf, Fabric, Velocity, custom jar), automatic jar and Java download, live console, multi-server dashboard, Modrinth plugins/mods, file manager with editor, playit.gg guide, system tray, auto start, crash restart, safe sequential shutdown, automatic updates, English/Vietnamese UI. No account, no data collection.
 

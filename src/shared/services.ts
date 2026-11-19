@@ -53,7 +53,7 @@ export interface ContentApi {
   playitReset(): Promise<void>; // forget the playit login (key file) so the user links the agent again
 }
 export interface ContentService extends ContentApi {
-  getDataJson(): Promise<T.DataJson>; // remote data.json with local cache + bundled fallback
+  getDataJson(opts?: { refresh?: boolean }): Promise<T.DataJson>; // remote data.json with local cache + bundled fallback
   getJavaExecutable(major: number): string | null;
   ensureJava(major: number, taskId: string): Promise<string>; // returns java.exe path, downloads if missing
   downloadServerJar(req: { software: T.ServerSoftware; mcVersion: string | null; build: string | null; destPath: string; taskId: string }): Promise<void>;
@@ -73,7 +73,7 @@ export interface FilesApi {
 export type FilesService = FilesApi;
 export interface LanguageApi {
   listInstalled(): Promise<T.LanguageInfo[]>;
-  listRemote(): Promise<T.LanguageInfo[]>; // from data.json languages
+  listRemote(refresh?: boolean): Promise<T.LanguageInfo[]>; // from data.json languages; refresh = download data.json again from GitHub
   install(code: string): Promise<void>; update(code: string): Promise<void>; remove(code: string): Promise<void>;
   installAll(): Promise<void>; updateAll(): Promise<void>; removeAll(): Promise<void>;
   getDictionary(code: string): Promise<Record<string, string>>; // already merged over English fallback

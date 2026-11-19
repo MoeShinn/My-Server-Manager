@@ -71,7 +71,7 @@ export function createDataJsonProvider(deps: {
   getSettings(): AppSettings;
   http: Http;
   log: Logger;
-}): () => Promise<DataJson> {
+}): (opts?: { refresh?: boolean }) => Promise<DataJson> {
   const { paths, config, getSettings, http, log } = deps;
   const cachePath = path.join(paths.cacheDir, 'data.json');
   let inflight: Promise<DataJson> | null = null;
@@ -84,13 +84,15 @@ export function createDataJsonProvider(deps: {
     return fetchedAt !== null && data ? { fetchedAt, data } : null;
   }
 
-  async function load(): Promise<DataJson> {
+  /** force = skip the cache age check and fail with NETWORK instead of silently using old data. */
+  async function load(force: boolean): Promise<DataJson> {
     const cached = await readCache();
     const fresh = cached !== null && Date.now() - cached.fetchedAt < CACHE_MAX_AGE_MS;
-    if (cached && fresh && !getSettings().alwaysFetchFreshVersions) return cached.data;
+    if (!force && cached && fresh && !getSettings().alwaysFetchFreshVersions) return cached.data;
 
     // The default config still has the placeholder OWNER/REPO, which would only 404.
     if (/^[\w.-]+\/[\w.-]+$/.test(config.dataRepo)) {
+      let remoteError: AppException | null = null;
       try {
         const url = `https://raw.githubusercontent.com/${config.dataRepo}/${config.dataBranch}/data.json`;
         const remote = parseDataJson(await http.getJson(url));
@@ -99,9 +101,13 @@ export function createDataJsonProvider(deps: {
           return remote;
         }
         log.warn('Remote data.json has an unexpected shape, ignoring it.');
+        remoteError = new AppException('NETWORK', 'Remote data.json has an unexpected shape');
       } catch (e) {
         log.warn('Could not fetch remote data.json:', e instanceof Error ? e.message : e);
+        remoteError = new AppException('NETWORK', 'Could not fetch remote data.json');
       }
+      // Only a forced refresh reports the failure; normal loads quietly fall back to the cache or bundled copy.
+      if (force && remoteError) throw remoteError;
     }
 
     if (cached) return cached.data;
@@ -112,9 +118,11 @@ export function createDataJsonProvider(deps: {
     throw new AppException('NOT_FOUND', 'data.json is not available (remote, cache and bundled copy all failed)');
   }
 
-  return function getDataJson(): Promise<DataJson> {
+  return function getDataJson(opts?: { refresh?: boolean }): Promise<DataJson> {
+    // A forced refresh never shares a normal (possibly cached) load.
+    if (opts?.refresh) return load(true);
     if (!inflight) {
-      inflight = load().finally(() => {
+      inflight = load(false).finally(() => {
         inflight = null;
       });
     }

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { RefreshCw } from 'lucide-react';
 import { Button, Badge, ConfirmDialog, Modal, Spinner, useToast } from '@/components/ui';
 import { useT } from '@/i18n';
 import type { LanguageInfo } from '@shared/types';
@@ -31,18 +32,21 @@ export default function LanguageModal({ open, onClose, onChanged }: LanguageModa
     [t, toast],
   );
 
-  const loadRemote = useCallback(async () => {
+  // refresh = download the language list from GitHub again, ignoring the cache. A failed refresh keeps the current list.
+  const loadRemote = useCallback(async (refresh = false) => {
     setLoading(true);
-    setFailed(false);
+    if (!refresh) setFailed(false);
     try {
-      setItems(await window.api.language.listRemote());
+      setItems(await window.api.language.listRemote(refresh));
+      setFailed(false);
+      if (refresh) toast.success(t('language.refreshed'));
     } catch (error) {
-      setFailed(true);
+      if (!refresh) setFailed(true);
       showError(error);
     } finally {
       setLoading(false);
     }
-  }, [showError]);
+  }, [showError, t, toast]);
 
   useEffect(() => {
     if (open) void loadRemote();
@@ -135,6 +139,17 @@ export default function LanguageModal({ open, onClose, onChanged }: LanguageModa
             </Button>
             <Button variant="secondary" size="sm" disabled={anyBusy || loading || failed} onClick={() => setConfirmBulk('updateAll')}>
               {t('language.bulk.updateAll')}
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={<RefreshCw size={14} />}
+              loading={loading}
+              disabled={anyBusy}
+              title={t('language.refreshHint')}
+              onClick={() => void loadRemote(true)}
+            >
+              {t('language.refresh')}
             </Button>
             {bulkBusy && <Spinner />}
           </div>

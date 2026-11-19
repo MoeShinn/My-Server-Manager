@@ -63,7 +63,7 @@ async function main(): Promise<void> {
   const files = createFilesService({ ...deps, getServerFolder: (id) => engine.getServerFolder(id) })
   const language = createLanguageService({
     ...deps,
-    getDataJson: () => content.getDataJson(),
+    getDataJson: (opts) => content.getDataJson(opts),
     setLanguage: async (code) => {
       settings.update({ language: code })
     }

@@ -8,7 +8,7 @@ import type { DataJson, LanguageInfo } from '@shared/types';
 import type { LanguageService, ServiceDeps } from '@shared/services';
 
 type LanguageDeps = ServiceDeps & {
-  getDataJson(): Promise<DataJson>;
+  getDataJson(opts?: { refresh?: boolean }): Promise<DataJson>;
   setLanguage(code: string): Promise<void>;
 };
 
@@ -27,7 +27,8 @@ interface RemoteCacheItem {
   fetchedAt: number;
 }
 
-const CODE_PATTERN = /^[a-z]{2,3}(-[a-z0-9]{2,8})?$/;
+// Language part is lowercase, the region/script part may be mixed case (zh-CN, pt-BR, zh-Hans).
+const CODE_PATTERN = /^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$/;
 const MAX_LANGUAGE_BYTES = 1024 * 1024;
 const REMOTE_CACHE_MS = 5 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 30 * 1000;
@@ -373,8 +374,10 @@ export function createLanguageService(deps: LanguageDeps): LanguageService {
     return result;
   });
 
-  const listRemote = wrap(async (): Promise<LanguageInfo[]> => {
-    const data = await deps.getDataJson();
+  const listRemote = wrap(async (refresh?: boolean): Promise<LanguageInfo[]> => {
+    // refresh = the person pressed the refresh button: forget cached files and download data.json again.
+    if (refresh === true) remoteCache.clear();
+    const data = await deps.getDataJson(refresh === true ? { refresh: true } : undefined);
     const current = deps.getSettings().language;
     const installed = await readInstalled();
     const items = await Promise.all(data.languages.map((entry) => downloadRemote(entry, false)));
@@ -436,7 +439,7 @@ export function createLanguageService(deps: LanguageDeps): LanguageService {
     const installed = await readInstalled();
     for (const fileName of names) {
       if (fileName === INSTALLED_FILE || fileName === 'en.json' || fileName === 'en.json.bak') continue;
-      const match = /^([a-z0-9-]+)\.json(\.bak)?$/.exec(fileName);
+      const match = /^([A-Za-z0-9-]+)\.json(\.bak)?$/.exec(fileName);
       if (!match) continue;
       await fsp.rm(path.join(languageDir, fileName), { force: true });
       delete installed[match[1]];
