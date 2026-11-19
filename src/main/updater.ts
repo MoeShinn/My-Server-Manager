@@ -54,7 +54,15 @@ export function createUpdater(opts: {
 
   function getUpdater(): Promise<import('electron-updater').AppUpdater> {
     if (!ready) {
-      ready = import('electron-updater').then(({ autoUpdater }) => {
+      ready = import('electron-updater').then((mod) => {
+        // electron-updater is CommonJS and defines `autoUpdater` with a lazy getter, so Node's native import() cannot see it
+        // as a named export (it is undefined). It is always reachable through `default` (= module.exports).
+        const loaded = mod as unknown as {
+          autoUpdater?: import('electron-updater').AppUpdater
+          default?: { autoUpdater?: import('electron-updater').AppUpdater }
+        }
+        const autoUpdater = loaded.default?.autoUpdater ?? loaded.autoUpdater
+        if (!autoUpdater) throw new Error('electron-updater did not provide autoUpdater')
         autoUpdater.autoDownload = false
         autoUpdater.autoInstallOnAppQuit = false
         autoUpdater.allowPrerelease = false
