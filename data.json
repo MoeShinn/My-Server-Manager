@@ -146,9 +146,24 @@
       "file": "language/zh-CN.json"
     },
     {
-      "code": "es",
-      "name": "Español",
-      "file": "language/es.json"
+      "code": "pt-BR",
+      "name": "Português (Brasil)",
+      "file": "language/pt-BR.json"
+    },
+    {
+      "code": "ru",
+      "name": "Русский",
+      "file": "language/ru.json"
+    },
+    {
+      "code": "id",
+      "name": "Bahasa Indonesia",
+      "file": "language/id.json"
+    },
+    {
+      "code": "de",
+      "name": "Deutsch",
+      "file": "language/de.json"
     }
   ],
   "playit": {
