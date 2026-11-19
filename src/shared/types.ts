@@ -32,7 +32,7 @@ export interface FileEntry { name: string; relPath: string; isDir: boolean; size
 export interface FileContent { content: string; binary: boolean; tooLarge: boolean; }
 export interface LanguageInfo { code: string; name: string; installed: boolean; updateAvailable: boolean; inUse: boolean; }
 export interface QuitProgress { state: 'stopping' | 'timeout' | 'done'; servers: { id: string; name: string; state: 'waiting' | 'stopping' | 'stopped' | 'timeout' }[]; }
-export interface UpdateState { state: 'none' | 'available' | 'downloading' | 'ready' | 'error'; version: string | null; percent: number | null; }
+export interface UpdateState { state: 'none' | 'available' | 'downloading' | 'ready' | 'error'; version: string | null; percent: number | null; /** Technical reason when state is 'error' (shown next to the localized message). */ detail?: string | null; }
 export interface AppConfig { appName: string; appId: string; appVersion: string; appRepo: string; dataRepo: string; dataBranch: string; languageFolder: string; defaultLanguage: string; windowMode: 'maximized' | 'normal'; windowWidth: number; windowHeight: number; privacyPolicyUrl: string; licenseUrl: string; appIcon: string; installerIcon: string; userAgent: string; }
 export interface AppSettings { language: string; dataDir: string; theme: 'dark' | 'light'; closeAction: 'tray' | 'ask' | 'quit'; launchAtLogin: boolean; autoCheckUpdate: boolean; versionCacheDays: number; alwaysFetchFreshVersions: boolean; showDuplicateBuilds: boolean; trayNoticeShown: boolean; }
 export interface AppPaths { userData: string; dataDir: string; serversDir: string; javaDir: string; cacheDir: string; languageDir: string; logsDir: string; resourcesDir: string; }

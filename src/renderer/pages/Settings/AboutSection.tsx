@@ -32,7 +32,7 @@ export default function AboutSection({ config }: AboutSectionProps) {
       const state = await window.api.app.checkUpdate();
       setUpdate(state);
       if (state.state === 'none') toast.info(t('settings.about.upToDate'));
-      else if (state.state === 'error') toast.error(t('settings.about.updateError'));
+      else if (state.state === 'error') toast.error(state.detail ? `${t('settings.about.updateError')} (${state.detail})` : t('settings.about.updateError'));
     } catch (error) {
       showError(error);
     } finally {
