@@ -4,6 +4,7 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { shell } from 'electron';
 import { AppException } from '@shared/types';
+import { BUNDLED_LANGUAGES } from '@shared/constants';
 import type { DataJson, LanguageInfo } from '@shared/types';
 import type { LanguageService, ServiceDeps } from '@shared/services';
 
@@ -34,6 +35,8 @@ const REMOTE_CACHE_MS = 5 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 30 * 1000;
 const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 const INSTALLED_FILE = 'installed.json';
+// Remembers which bundled languages were already copied once, so a language the person removed does not come back on restart.
+const SEEDED_FILE = 'seeded.json';
 
 function sha256Of(data: string | Buffer): string {
   return createHash('sha256').update(data).digest('hex');
@@ -84,6 +87,7 @@ export function createLanguageService(deps: LanguageDeps): LanguageService {
   const languageDir = paths.languageDir;
   const bundledDir = path.join(paths.resourcesDir, 'language');
   const installedFile = path.join(languageDir, INSTALLED_FILE);
+  const seededFile = path.join(languageDir, SEEDED_FILE);
 
   const remoteCache = new Map<string, RemoteCacheItem>();
   const dictionaryCache = new Map<string, { stamp: string; value: Dictionary }>();
@@ -153,48 +157,58 @@ export function createLanguageService(deps: LanguageDeps): LanguageService {
 
   // ---------- startup: ensure folder and seed bundled files (synchronous so the service is ready at once) ----------
 
+  function readSeededSync(): Set<string> {
+    try {
+      const parsed: unknown = JSON.parse(fs.readFileSync(seededFile, 'utf8'));
+      if (Array.isArray(parsed)) return new Set(parsed.filter((v): v is string => typeof v === 'string'));
+    } catch {
+      // first run or unreadable file
+    }
+    return new Set();
+  }
+
+  /** Only the languages in BUNDLED_LANGUAGES are copied. Everything else has to be downloaded by the person. */
   function seedBundledLanguages(): void {
     fs.mkdirSync(languageDir, { recursive: true });
-    let names: string[] = [];
-    try {
-      names = fs.readdirSync(bundledDir).filter((n) => n.endsWith('.json'));
-    } catch (error) {
-      log.warn('[language] bundled language folder not readable', bundledDir, error);
-      return;
-    }
     const installed = readInstalledSync();
-    let changed = false;
-    for (const name of names) {
-      const code = name.slice(0, -'.json'.length);
-      if (!CODE_PATTERN.test(code)) continue;
+    const seeded = readSeededSync();
+    let installedChanged = false;
+    let seededChanged = false;
+    for (const code of BUNDLED_LANGUAGES) {
       try {
-        const source = fs.readFileSync(path.join(bundledDir, name));
+        const source = fs.readFileSync(path.join(bundledDir, `${code}.json`));
+        const sourceHash = sha256Of(source);
         const target = languageFilePath(code);
         const exists = fs.existsSync(target);
-        if (exists && code !== 'en') continue;
-        if (exists && code === 'en') {
-          const current = fs.readFileSync(target);
-          if (current.equals(source)) {
-            if (!installed[code]) {
-              installed[code] = { sha256: sha256Of(source), installedAt: Date.now(), source: 'seed' };
-              changed = true;
-            }
-            continue;
+        if (code === 'en') {
+          // English is always kept in sync with the app version.
+          if (!exists || !fs.readFileSync(target).equals(source)) fs.writeFileSync(target, source);
+          if (installed[code]?.sha256 !== sourceHash) {
+            installed[code] = { sha256: sourceHash, installedAt: Date.now(), source: 'seed' };
+            installedChanged = true;
           }
+          continue;
         }
-        fs.writeFileSync(target, source);
-        installed[code] = { sha256: sha256Of(source), installedAt: Date.now(), source: 'seed' };
-        changed = true;
+        if (seeded.has(code)) continue; // already seeded once: respect removal and the person's own edits
+        if (!exists) {
+          fs.writeFileSync(target, source);
+          installed[code] = { sha256: sourceHash, installedAt: Date.now(), source: 'seed' };
+          installedChanged = true;
+        } else if (!installed[code] && fs.readFileSync(target).equals(source)) {
+          installed[code] = { sha256: sourceHash, installedAt: Date.now(), source: 'seed' };
+          installedChanged = true;
+        }
+        seeded.add(code);
+        seededChanged = true;
       } catch (error) {
-        log.warn('[language] failed to seed language file', name, error);
+        log.warn('[language] failed to seed bundled language', code, error);
       }
     }
-    if (changed) {
-      try {
-        fs.writeFileSync(installedFile, JSON.stringify(installed, null, 2), 'utf8');
-      } catch (error) {
-        log.warn('[language] failed to write installed.json', error);
-      }
+    try {
+      if (installedChanged) fs.writeFileSync(installedFile, JSON.stringify(installed, null, 2), 'utf8');
+      if (seededChanged) fs.writeFileSync(seededFile, JSON.stringify([...seeded], null, 2), 'utf8');
+    } catch (error) {
+      log.warn('[language] failed to write language bookkeeping files', error);
     }
   }
 
@@ -354,7 +368,7 @@ export function createLanguageService(deps: LanguageDeps): LanguageService {
     const names = await fsp.readdir(languageDir).catch(() => [] as string[]);
     const result: LanguageInfo[] = [];
     for (const fileName of names) {
-      if (!fileName.endsWith('.json') || fileName === INSTALLED_FILE) continue;
+      if (!fileName.endsWith('.json') || fileName === INSTALLED_FILE || fileName === SEEDED_FILE) continue;
       const code = fileName.slice(0, -'.json'.length);
       if (!CODE_PATTERN.test(code)) continue;
       try {
@@ -438,7 +452,7 @@ export function createLanguageService(deps: LanguageDeps): LanguageService {
     const names = await fsp.readdir(languageDir).catch(() => [] as string[]);
     const installed = await readInstalled();
     for (const fileName of names) {
-      if (fileName === INSTALLED_FILE || fileName === 'en.json' || fileName === 'en.json.bak') continue;
+      if (fileName === INSTALLED_FILE || fileName === SEEDED_FILE || fileName === 'en.json' || fileName === 'en.json.bak') continue;
       const match = /^([A-Za-z0-9-]+)\.json(\.bak)?$/.exec(fileName);
       if (!match) continue;
       await fsp.rm(path.join(languageDir, fileName), { force: true });

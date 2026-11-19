@@ -6,7 +6,7 @@ import { createLifecycle } from './lifecycle'
 import type { LifecycleController } from './lifecycle'
 import { createLogger } from './logger'
 import { emit, registerServices } from './ipcRegistry'
-import { createAppPaths, getResourcesDir, getUserDataDir, seedBundledLanguages } from './paths'
+import { createAppPaths, getResourcesDir, getUserDataDir } from './paths'
 import { createSettingsStore } from './settings'
 import { createTray } from './tray'
 import { createUpdater } from './updater'
@@ -54,7 +54,6 @@ async function main(): Promise<void> {
   await app.whenReady()
   if (app.isPackaged) Menu.setApplicationMenu(null)
   session.defaultSession.setPermissionRequestHandler((_wc, _permission, callback) => callback(false))
-  seedBundledLanguages(paths, log)
 
   // Wiring order is fixed by the contract: content, engine, files, language, app.
   const deps: ServiceDeps = { paths, config, getSettings: () => settings.get(), emit, log }

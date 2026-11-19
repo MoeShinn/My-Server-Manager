@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
-import { RefreshCw } from 'lucide-react';
-import { Button, Badge, ConfirmDialog, Modal, Spinner, useToast } from '@/components/ui';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { RefreshCw, Search, X } from 'lucide-react';
+import { Button, Badge, ConfirmDialog, Modal, Spinner, TextInput, useToast } from '@/components/ui';
 import { useT } from '@/i18n';
 import type { LanguageInfo } from '@shared/types';
 import { readApiError } from './errorUtils';
+import { filterLanguages } from './languageSearch';
 
 interface LanguageModalProps {
   open: boolean;
@@ -23,6 +24,7 @@ export default function LanguageModal({ open, onClose, onChanged }: LanguageModa
   const [busyCode, setBusyCode] = useState<string | null>(null);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [confirmBulk, setConfirmBulk] = useState<BulkKind | null>(null);
+  const [query, setQuery] = useState('');
 
   const showError = useCallback(
     (error: unknown) => {
@@ -49,8 +51,13 @@ export default function LanguageModal({ open, onClose, onChanged }: LanguageModa
   }, [showError, t, toast]);
 
   useEffect(() => {
-    if (open) void loadRemote();
+    if (open) {
+      setQuery('');
+      void loadRemote();
+    }
   }, [open, loadRemote]);
+
+  const visibleItems = useMemo(() => filterLanguages(items, query), [items, query]);
 
   async function runForOne(code: string, action: 'install' | 'update' | 'remove') {
     setBusyCode(code);
@@ -154,6 +161,43 @@ export default function LanguageModal({ open, onClose, onChanged }: LanguageModa
             {bulkBusy && <Spinner />}
           </div>
 
+          {!failed && items.length > 0 && (
+            <div className="flex flex-col gap-1">
+              <div className="relative">
+                <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+                <TextInput
+                  autoFocus
+                  value={query}
+                  onChange={setQuery}
+                  placeholder={t('language.search.placeholder')}
+                  aria-label={t('common.search')}
+                  className="pl-9 pr-9"
+                  onKeyDown={(e) => {
+                    // Esc clears the search first; a second Esc closes the window.
+                    if (e.key === 'Escape' && query !== '') {
+                      e.stopPropagation();
+                      setQuery('');
+                    }
+                  }}
+                />
+                {query !== '' && (
+                  <button
+                    type="button"
+                    aria-label={t('language.search.clear')}
+                    title={t('language.search.clear')}
+                    onClick={() => setQuery('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted hover:bg-panel-2 hover:text-fg"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+              <div className="px-1 text-xs text-muted">
+                {t('language.search.count', { shown: visibleItems.length, total: items.length })}
+              </div>
+            </div>
+          )}
+
           {loading && items.length === 0 ? (
             <div className="flex h-32 items-center justify-center gap-2 text-sm text-[var(--muted)]">
               <Spinner />
@@ -167,8 +211,14 @@ export default function LanguageModal({ open, onClose, onChanged }: LanguageModa
               </Button>
             </div>
           ) : (
-            <ul className="divide-y divide-[var(--border)] rounded-lg border border-[var(--border)]">
-              {items.map((item) => {
+            <ul
+              className="divide-y divide-[var(--border)] overflow-y-auto rounded-lg border border-[var(--border)]"
+              style={{ maxHeight: 'min(50vh, 420px)' }}
+            >
+              {visibleItems.length === 0 && (
+                <li className="px-3 py-6 text-center text-sm text-[var(--muted)]">{t('language.search.empty', { query: query.trim() })}</li>
+              )}
+              {visibleItems.map((item) => {
                 const removeBlockedReason =
                   item.code === 'en' ? t('language.remove.disabledEn') : item.inUse ? t('language.remove.disabledInUse') : null;
                 const busy = busyCode === item.code;

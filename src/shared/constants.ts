@@ -9,3 +9,7 @@ export const SERVER_META_DIR = '.mcmanager';
 export const MOD_KIND_BY_SOFTWARE: Record<ServerSoftware, ModKind> = { vanilla: 'none', paper: 'plugin', purpur: 'plugin', folia: 'plugin', leaf: 'plugin', velocity: 'plugin', fabric: 'mod', custom: 'plugin' };
 // Methods that exist on a *Service object but must NOT be exposed to the renderer.
 export const INTERNAL_METHODS = ['getServerFolder', 'stopAllSequential', 'runningServerIds', 'recoverOrphans', 'startAutoStartServers', 'getDataJson', 'getJavaExecutable', 'ensureJava', 'downloadServerJar', 'shutdown'] as const;
+
+// Languages shipped inside the installer. Every other language must be downloaded from the language list.
+// Keep this in sync with the `language` filter in electron-builder.config.cjs.
+export const BUNDLED_LANGUAGES = ['en', 'vi-en'] as const;

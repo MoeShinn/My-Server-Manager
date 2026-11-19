@@ -164,6 +164,11 @@
       "code": "de",
       "name": "Deutsch",
       "file": "language/de.json"
+    },
+    {
+      "code": "es",
+      "name": "Español",
+      "file": "language/es.json"
     }
   ],
   "playit": {

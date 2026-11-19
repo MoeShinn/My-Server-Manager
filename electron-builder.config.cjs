@@ -52,7 +52,8 @@ module.exports = {
   extraResources: [
     { from: 'config.toml', to: 'config.toml' },
     { from: 'data.json', to: 'data.json' },
-    { from: 'language', to: 'language', filter: ['**/*'] },
+    // Only the bundled languages ship in the installer (see BUNDLED_LANGUAGES). The rest are downloaded in-app.
+    { from: 'language', to: 'language', filter: ['en.json', 'vi-en.json'] },
     { from: 'assets', to: 'assets', filter: ['**/*'] },
     { from: 'legal', to: 'legal', filter: ['**/*'] }
   ],
