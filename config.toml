@@ -16,7 +16,7 @@ app_id = "com.moeshinn.mcservermanager"
 # Phiên bản app, theo dạng số.số.số (semver).
 # Ví dụ: "1.0.1"
 # LƯU Ý: đây là nơi DUY NHẤT để đổi phiên bản, lúc build sẽ tự đồng bộ vào package.json.
-app_version = "1.0.1"
+app_version = "1.0.0"
 
 # ---------------- Nguồn dữ liệu ----------------
 
