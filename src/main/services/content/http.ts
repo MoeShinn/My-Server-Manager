@@ -8,6 +8,8 @@ export interface Http {
   userAgent: string;
   /** GET a JSON document. 30s timeout, 2 retries on network errors and 5xx, one retry on 429. */
   getJson(url: string, opts?: { headers?: Record<string, string>; retries?: number }): Promise<unknown>;
+  /** POST a JSON body and read a JSON answer. Same timeout and retry rules as getJson. */
+  postJson(url: string, body: unknown, opts?: { headers?: Record<string, string>; retries?: number }): Promise<unknown>;
 }
 
 const TIMEOUT_MS = 30_000;
@@ -15,8 +17,10 @@ const TIMEOUT_MS = 30_000;
 export function createHttp(deps: { userAgent: string; log: Logger }): Http {
   const { userAgent, log } = deps;
 
-  async function getJson(
+  async function requestJson(
+    method: 'GET' | 'POST',
     rawUrl: string,
+    body: unknown,
     opts?: { headers?: Record<string, string>; retries?: number }
   ): Promise<unknown> {
     const url = assertAllowedUrl(rawUrl);
@@ -27,7 +31,14 @@ export function createHttp(deps: { userAgent: string; log: Logger }): Http {
     for (;;) {
       try {
         const res = await fetch(url.href, {
-          headers: { 'User-Agent': userAgent, Accept: 'application/json', ...(opts?.headers ?? {}) },
+          method,
+          headers: {
+            'User-Agent': userAgent,
+            Accept: 'application/json',
+            ...(method === 'POST' ? { 'Content-Type': 'application/json' } : {}),
+            ...(opts?.headers ?? {})
+          },
+          body: method === 'POST' ? JSON.stringify(body) : undefined,
           signal: AbortSignal.timeout(TIMEOUT_MS),
           redirect: 'follow'
         });
@@ -75,5 +86,8 @@ export function createHttp(deps: { userAgent: string; log: Logger }): Http {
     }
   }
 
-  return { userAgent, getJson };
+  const getJson: Http['getJson'] = (url, opts) => requestJson('GET', url, undefined, opts);
+  const postJson: Http['postJson'] = (url, body, opts) => requestJson('POST', url, body, opts);
+
+  return { userAgent, getJson, postJson };
 }

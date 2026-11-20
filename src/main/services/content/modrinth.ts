@@ -1,5 +1,6 @@
 // FILE: src/main/services/content/modrinth.ts
-import { promises as fsp } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { createReadStream, promises as fsp } from 'node:fs';
 import path from 'node:path';
 import { AppException } from '../../../shared/types';
 import type { AppPaths, ContentItem, ContentSearchQuery, ContentSearchResult, DataJson, ServerConfig, ServerSoftware } from '../../../shared/types';
@@ -8,12 +9,15 @@ import type { Downloader, HashSpec } from './download';
 import type { Http } from './http';
 import { asArray, asNumber, asRecord, asString, isRecord } from './json';
 import { SERVER_META_DIR } from '../../../shared/constants';
-import { enc, pathExists, readJsonFile, writeJsonAtomic } from './util';
+import { readJarIcon } from './jarIcon';
+import { enc, mapLimit, pathExists, readJsonFile, writeJsonAtomic } from './util';
 
 const API = 'https://api.modrinth.com/v2';
 const SERVER_ID_RE = /^[a-z0-9-]+$/;
 const ITEM_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 const MAX_DEP_DEPTH = 3;
+/** A file Modrinth did not know is asked about again after this long (it may have been uploaded since). */
+const UNKNOWN_RECHECK_MS = 3 * 24 * 60 * 60 * 1000;
 
 interface InstalledRecord {
   fileName: string;
@@ -21,8 +25,43 @@ interface InstalledRecord {
   title: string;
   author: string;
   installedAt: number;
+  /** undefined = never looked up (installed by an older app version); null = looked up, project has no icon. */
+  iconUrl?: string | null;
+  description?: string;
 }
 type Records = Record<string, InstalledRecord>;
+
+/** What Modrinth knows about a project (only the fields the UI needs). */
+interface ProjectInfo {
+  title: string;
+  description: string;
+  author: string;
+  iconUrl: string | null;
+}
+
+/** Result of asking Modrinth about a .jar that was not installed through the app. Keyed by file name. */
+interface MetaEntry {
+  size: number;
+  mtimeMs: number;
+  sha1: string;
+  projectId: string | null;
+  title: string;
+  description: string;
+  author: string;
+  iconUrl: string | null;
+  checkedAt: number;
+}
+type MetaCache = Record<string, MetaEntry>;
+
+function sha1OfFile(filePath: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const hash = createHash('sha1');
+    const stream = createReadStream(filePath);
+    stream.on('data', (chunk) => hash.update(chunk));
+    stream.on('error', reject);
+    stream.on('end', () => resolve(hash.digest('hex')));
+  });
+}
 
 interface ServerInfo {
   serverId: string;
@@ -187,7 +226,95 @@ export function createModrinth(deps: {
         versionId: asString(value.versionId) ?? '',
         title: asString(value.title) ?? fileName,
         author: typeof value.author === 'string' ? value.author : '',
-        installedAt: asNumber(value.installedAt) ?? 0
+        installedAt: asNumber(value.installedAt) ?? 0,
+        iconUrl: typeof value.iconUrl === 'string' && value.iconUrl !== '' ? value.iconUrl : value.iconUrl === null ? null : undefined,
+        description: typeof value.description === 'string' ? value.description : undefined
+      };
+    }
+    return out;
+  }
+
+  // ---- Modrinth lookups used for icons ----
+
+  /** Title, description, icon and owner for up to many projects, in as few requests as possible. */
+  async function fetchProjectInfo(ids: string[]): Promise<Map<string, ProjectInfo>> {
+    const out = new Map<string, ProjectInfo>();
+    const valid = [...new Set(ids)].filter((id) => ITEM_ID_RE.test(id));
+    for (let i = 0; i < valid.length; i += 50) {
+      const chunk = valid.slice(i, i + 50);
+      const projects = asArray(await http.getJson(`${API}/projects?ids=${enc(JSON.stringify(chunk))}`, { retries: 0 }));
+      const projectOfTeam = new Map<string, string>();
+      for (const p of projects) {
+        if (!isRecord(p)) continue;
+        const id = asString(p.id);
+        const title = asString(p.title);
+        if (!id || !title) continue;
+        out.set(id, {
+          title,
+          description: typeof p.description === 'string' ? p.description : '',
+          author: '',
+          iconUrl: asString(p.icon_url)
+        });
+        const team = asString(p.team);
+        if (team) projectOfTeam.set(team, id);
+      }
+      if (projectOfTeam.size === 0) continue;
+      try {
+        const teams = asArray(await http.getJson(`${API}/teams?ids=${enc(JSON.stringify([...projectOfTeam.keys()]))}`, { retries: 0 }));
+        for (const members of teams) {
+          if (!Array.isArray(members)) continue;
+          const list = members.filter(isRecord);
+          const owner = list.find((m) => m.role === 'Owner') ?? list[0];
+          if (!owner) continue;
+          const teamId = asString(owner.team_id);
+          const username = asString(asRecord(owner.user).username);
+          const projectId = teamId ? projectOfTeam.get(teamId) : undefined;
+          const info = projectId ? out.get(projectId) : undefined;
+          if (info && username) info.author = username;
+        }
+      } catch {
+        // the author stays empty, the icon is what matters here
+      }
+    }
+    return out;
+  }
+
+  /** sha1 of a .jar -> Modrinth project id, for the jars Modrinth knows. */
+  async function lookupProjectsByHash(hashes: string[]): Promise<Map<string, string>> {
+    const out = new Map<string, string>();
+    for (let i = 0; i < hashes.length; i += 100) {
+      const chunk = hashes.slice(i, i + 100);
+      const res = asRecord(await http.postJson(`${API}/version_files`, { hashes: chunk, algorithm: 'sha1' }, { retries: 0 }));
+      for (const [hash, version] of Object.entries(res)) {
+        if (!isRecord(version)) continue;
+        const projectId = asString(version.project_id);
+        if (projectId && ITEM_ID_RE.test(projectId)) out.set(hash.toLowerCase(), projectId);
+      }
+    }
+    return out;
+  }
+
+  const metaCachePath = (info: ServerInfo): string => path.join(info.folder, SERVER_META_DIR, 'content-meta-cache.json');
+
+  async function readMetaCache(info: ServerInfo): Promise<MetaCache> {
+    const raw = await readJsonFile(metaCachePath(info));
+    const out: MetaCache = {};
+    if (!isRecord(raw)) return out;
+    for (const [fileName, v] of Object.entries(raw)) {
+      if (!isRecord(v)) continue;
+      const size = asNumber(v.size);
+      const mtimeMs = asNumber(v.mtimeMs);
+      if (size === null || mtimeMs === null) continue;
+      out[fileName] = {
+        size,
+        mtimeMs,
+        sha1: asString(v.sha1) ?? '',
+        projectId: asString(v.projectId),
+        title: asString(v.title) ?? '',
+        description: typeof v.description === 'string' ? v.description : '',
+        author: typeof v.author === 'string' ? v.author : '',
+        iconUrl: asString(v.iconUrl),
+        checkedAt: asNumber(v.checkedAt) ?? 0
       };
     }
     return out;
@@ -267,9 +394,16 @@ export function createModrinth(deps: {
 
   // ---- installed list ----
 
+  /**
+   * Icon order for every installed jar:
+   *   1. the icon Modrinth has for it (saved when installed through the app, or found by the jar's hash),
+   *   2. the icon that ships inside the jar itself,
+   *   3. null (the UI then shows the default icon).
+   * Network problems never break the list: it just falls back to step 2 and 3.
+   */
   async function listInstalledContent(serverId: string): Promise<ContentItem[]> {
     const info = await readServer(serverId);
-    const records = await readRecords(info);
+    let records = await readRecords(info);
     let files: string[] = [];
     try {
       files = (await fsp.readdir(info.installDir)).filter((f) => /\.jar$/i.test(f));
@@ -277,36 +411,145 @@ export function createModrinth(deps: {
       files = [];
     }
     const fileSet = new Set(files);
-    const items: ContentItem[] = [];
+
+    // A) Installed by an older app version: no icon saved yet. Ask Modrinth once and remember the answer.
+    const stale = Object.entries(records).filter(([, r]) => fileSet.has(r.fileName) && r.iconUrl === undefined);
+    if (stale.length > 0) {
+      try {
+        const found = await fetchProjectInfo(stale.map(([projectId]) => projectId));
+        await updateRecords(info, (recs) => {
+          for (const [projectId] of stale) {
+            const rec = recs[projectId];
+            if (!rec || rec.iconUrl !== undefined) continue;
+            const meta = found.get(projectId);
+            rec.iconUrl = meta ? meta.iconUrl : null;
+            if (meta) {
+              rec.description = meta.description;
+              if (!rec.author && meta.author) rec.author = meta.author;
+            }
+          }
+        });
+        records = await readRecords(info);
+      } catch (e) {
+        log.warn('Could not load icons for installed content:', e instanceof Error ? e.message : e);
+      }
+    }
+
     const known = new Set<string>();
+    for (const rec of Object.values(records)) known.add(rec.fileName);
+
+    // B) Jars that were put in the folder by hand: identify them on Modrinth by their hash.
+    const unknownFiles = files.filter((f) => !known.has(f));
+    const metaByFile = new Map<string, MetaEntry>();
+    if (unknownFiles.length > 0) {
+      const cache = await readMetaCache(info);
+      const now = Date.now();
+      const statted = await mapLimit(unknownFiles, 8, async (f) => {
+        try {
+          const st = await fsp.stat(path.join(info.installDir, f));
+          return { file: f, size: st.size, mtimeMs: Math.floor(st.mtimeMs) };
+        } catch {
+          return null;
+        }
+      });
+      const todo: { file: string; size: number; mtimeMs: number }[] = [];
+      for (const st of statted) {
+        if (!st) continue;
+        const hit = cache[st.file];
+        const fresh =
+          hit !== undefined &&
+          hit.size === st.size &&
+          hit.mtimeMs === st.mtimeMs &&
+          (hit.projectId !== null || now - hit.checkedAt < UNKNOWN_RECHECK_MS);
+        if (hit && fresh) metaByFile.set(st.file, hit);
+        else todo.push(st);
+      }
+
+      if (todo.length > 0) {
+        try {
+          const hashes = await mapLimit(todo, 4, async (t) => ({ ...t, sha1: await sha1OfFile(path.join(info.installDir, t.file)) }));
+          const projectOfHash = await lookupProjectsByHash(hashes.map((h) => h.sha1));
+          const projects = await fetchProjectInfo([...new Set(projectOfHash.values())]);
+          for (const h of hashes) {
+            const projectId = projectOfHash.get(h.sha1) ?? null;
+            const meta = projectId ? projects.get(projectId) : undefined;
+            // Modrinth knows the hash but the project lookup failed: do not remember, try again next time.
+            if (projectId && !meta) continue;
+            const entry: MetaEntry = {
+              size: h.size,
+              mtimeMs: h.mtimeMs,
+              sha1: h.sha1,
+              projectId,
+              title: meta?.title ?? '',
+              description: meta?.description ?? '',
+              author: meta?.author ?? '',
+              iconUrl: meta?.iconUrl ?? null,
+              checkedAt: now
+            };
+            cache[h.file] = entry;
+            metaByFile.set(h.file, entry);
+          }
+          for (const name of Object.keys(cache)) if (!fileSet.has(name)) delete cache[name];
+          await writeJsonAtomic(metaCachePath(info), cache).catch(() => undefined);
+        } catch (e) {
+          log.warn('Could not look up installed files on Modrinth:', e instanceof Error ? e.message : e);
+        }
+      }
+    }
+
+    // C) Build the list.
+    const items: ContentItem[] = [];
     for (const [projectId, rec] of Object.entries(records)) {
       if (!fileSet.has(rec.fileName)) continue;
-      known.add(rec.fileName);
       items.push({
         id: projectId,
         title: rec.title,
-        description: '',
+        description: rec.description ?? '',
         author: rec.author,
-        iconUrl: null,
+        iconUrl: rec.iconUrl ?? null,
         pageUrl: `https://modrinth.com/project/${projectId}`,
         installed: true,
         installedFile: rec.fileName
       });
     }
-    for (const f of files) {
-      if (known.has(f)) continue;
-      items.push({ id: `file:${f}`, title: f, description: '', author: '', iconUrl: null, pageUrl: '', installed: true, installedFile: f });
+    for (const f of unknownFiles) {
+      const meta = metaByFile.get(f);
+      const matched = meta !== undefined && meta.projectId !== null;
+      items.push({
+        id: `file:${f}`,
+        title: matched && meta.title !== '' ? meta.title : f,
+        description: matched ? meta.description : '',
+        author: matched ? meta.author : '',
+        iconUrl: matched ? meta.iconUrl : null,
+        pageUrl: matched ? `https://modrinth.com/project/${meta.projectId}` : '',
+        installed: true,
+        installedFile: f
+      });
     }
+
+    // D) Still no icon: use the one inside the jar (reads only a few KB per file).
+    await mapLimit(items, 6, async (item) => {
+      if (item.iconUrl !== null || item.installedFile === null) return;
+      item.iconUrl = await readJarIcon(path.join(info.installDir, item.installedFile));
+    });
+
     return items.sort((a, b) => a.title.localeCompare(b.title));
   }
 
   // ---- install ----
 
-  async function projectMeta(projectId: string): Promise<{ title: string | null; author: string | null }> {
+  async function projectMeta(
+    projectId: string
+  ): Promise<{ title: string | null; author: string | null; iconUrl: string | null; description: string }> {
     let title: string | null = null;
     let author: string | null = null;
+    let iconUrl: string | null = null;
+    let description = '';
     try {
-      title = asString(asRecord(await http.getJson(`${API}/project/${enc(projectId)}`)).title);
+      const project = asRecord(await http.getJson(`${API}/project/${enc(projectId)}`));
+      title = asString(project.title);
+      iconUrl = asString(project.icon_url);
+      description = typeof project.description === 'string' ? project.description : '';
     } catch (e) {
       log.warn(`Could not read Modrinth project ${projectId}:`, e instanceof Error ? e.message : e);
     }
@@ -317,7 +560,7 @@ export function createModrinth(deps: {
     } catch {
       // author stays empty
     }
-    return { title, author };
+    return { title, author, iconUrl, description };
   }
 
   async function installOne(
@@ -355,7 +598,9 @@ export function createModrinth(deps: {
         versionId: picked.id,
         title: meta.title ?? picked.file.fileName,
         author: meta.author ?? '',
-        installedAt: Date.now()
+        installedAt: Date.now(),
+        iconUrl: meta.iconUrl,
+        description: meta.description
       };
     });
     if (previous && previous.fileName !== picked.file.fileName) {

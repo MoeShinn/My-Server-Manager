@@ -1,10 +1,11 @@
 // FILE: src/renderer/pages/PluginsMods/ContentRow.tsx
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Download, Trash2 } from 'lucide-react';
 import { Box, Button, ProgressBar } from '@/components/ui';
 import { useT } from '@/i18n';
 import type { ContentItem } from '@shared/types';
-import { authorColor, tileColor } from './colors';
+import { authorColor } from './colors';
+import { DEFAULT_CONTENT_ICON } from './defaultIcon';
 
 export const MAX_DESC_CHARS = 120;
 
@@ -24,27 +25,24 @@ interface Props {
 export default function ContentRow({ item, busy, progress, onInstall, onRemove }: Props) {
   const t = useT();
   const [iconFailed, setIconFailed] = useState(false);
-  const showIcon = item.iconUrl !== null && item.iconUrl !== '' && !iconFailed;
-  const initial = (item.title.trim().charAt(0) || '?').toUpperCase();
+  // A new icon address (for example after the list is refreshed) deserves a new try.
+  useEffect(() => setIconFailed(false), [item.iconUrl]);
+  const hasOwnIcon = item.iconUrl !== null && item.iconUrl !== '' && !iconFailed;
+  const iconSrc = hasOwnIcon ? (item.iconUrl as string) : DEFAULT_CONTENT_ICON;
 
   return (
     <Box>
       <div className="flex items-center gap-3">
-        {showIcon ? (
-          <img
-            src={item.iconUrl ?? ''}
-            alt=""
-            className="h-12 w-12 shrink-0 rounded-lg object-cover"
-            onError={() => setIconFailed(true)}
-          />
-        ) : (
-          <div
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg text-lg font-semibold"
-            style={{ background: tileColor(item.title), color: 'var(--bg)' }}
-          >
-            {initial}
-          </div>
-        )}
+        <img
+          src={iconSrc}
+          alt=""
+          draggable={false}
+          loading="lazy"
+          className="h-12 w-12 shrink-0 rounded-lg object-cover"
+          onError={() => {
+            if (hasOwnIcon) setIconFailed(true);
+          }}
+        />
 
         <div className="min-w-0 flex-1">
           <div className="truncate font-semibold text-[var(--text)]">{item.title}</div>
