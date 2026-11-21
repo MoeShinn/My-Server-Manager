@@ -131,19 +131,49 @@
       "file": "language/en.json"
     },
     {
-      "code": "vi",
-      "name": "Tiếng Việt",
-      "file": "language/vi.json"
-    },
-    {
       "code": "vi-en",
       "name": "Tiếng Việt - English",
       "file": "language/vi-en.json"
     },
     {
-      "code": "zh-CN",
-      "name": "简体中文",
-      "file": "language/zh-CN.json"
+      "code": "de",
+      "name": "Deutsch",
+      "file": "language/de.json"
+    },
+    {
+      "code": "es",
+      "name": "Español",
+      "file": "language/es.json"
+    },
+    {
+      "code": "fr",
+      "name": "Français",
+      "file": "language/fr.json"
+    },
+    {
+      "code": "id",
+      "name": "Bahasa Indonesia",
+      "file": "language/id.json"
+    },
+    {
+      "code": "it",
+      "name": "Italiano",
+      "file": "language/it.json"
+    },
+    {
+      "code": "ja",
+      "name": "日本語",
+      "file": "language/ja.json"
+    },
+    {
+      "code": "ko",
+      "name": "한국어",
+      "file": "language/ko.json"
+    },
+    {
+      "code": "pl",
+      "name": "Polski",
+      "file": "language/pl.json"
     },
     {
       "code": "pt-BR",
@@ -156,54 +186,24 @@
       "file": "language/ru.json"
     },
     {
-      "code": "id",
-      "name": "Bahasa Indonesia",
-      "file": "language/id.json"
-    },
-    {
-      "code": "es",
-      "name": "Español",
-      "file": "language/es.json"
-    },
-    {
-      "code": "de",
-      "name": "Deutsch",
-      "file": "language/de.json"
-    },
-    {
       "code": "tr",
       "name": "Türkçe",
       "file": "language/tr.json"
     },
     {
-      "code": "fr",
-      "name": "Français",
-      "file": "language/fr.json"
+      "code": "vi",
+      "name": "Tiếng Việt",
+      "file": "language/vi.json"
     },
     {
-      "code": "ja",
-      "name": "日本語",
-      "file": "language/ja.json"
-    },
-    {
-      "code": "pl",
-      "name": "Polski",
-      "file": "language/pl.json"
-    },
-    {
-      "code": "ko",
-      "name": "한국어",
-      "file": "language/ko.json"
+      "code": "zh-CN",
+      "name": "简体中文",
+      "file": "language/zh-CN.json"
     },
     {
       "code": "zh-TW",
       "name": "繁體中文",
       "file": "language/zh-TW.json"
-    },
-    {
-      "code": "it",
-      "name": "Italiano",
-      "file": "language/it.json"
     }
   ],
   "playit": {
