@@ -189,6 +189,16 @@
       "code": "ko",
       "name": "한국어",
       "file": "language/ko.json"
+    },
+    {
+      "code": "zh-TW",
+      "name": "繁體中文",
+      "file": "language/zh-TW.json"
+    },
+    {
+      "code": "it",
+      "name": "Italiano",
+      "file": "language/it.json"
     }
   ],
   "playit": {
