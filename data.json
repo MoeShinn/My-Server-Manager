@@ -161,6 +161,11 @@
       "file": "language/id.json"
     },
     {
+      "code": "es",
+      "name": "Español",
+      "file": "language/es.json"
+    },
+    {
       "code": "de",
       "name": "Deutsch",
       "file": "language/de.json"
